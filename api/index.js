@@ -1,3 +1,4 @@
+cat > api/index.js << 'EOF'
 const express = require('express');
 const cors = require('cors');
 const QRCode = require('qrcode');
@@ -48,6 +49,11 @@ app.post('/api/qr/generate', async (req, res) => {
     }
 });
 
+// List QR codes
+app.get('/api/qr/list', (req, res) => {
+    res.json({ success: true, codes: qrCodes });
+});
+
 // Redirect endpoint
 app.get('/api/r/:id', (req, res) => {
     const { id } = req.params;
@@ -57,21 +63,17 @@ app.get('/api/r/:id', (req, res) => {
         <head><title>Luban Coffee QR</title></head>
         <body style="font-family: Arial; text-align: center; padding: 50px;">
             <h1>☕ Luban Coffee</h1>
-            <p>QR Code ID: ${id}</p>
-            <p>This is a test redirect. Your dynamic system is working!</p>
-            <p>You can change where this QR code goes in the database.</p>
+            <p>QR Code ID: <strong>${id}</strong></p>
+            <p>✅ Your dynamic QR system is working!</p>
+            <p>You can change where this QR code redirects in the database.</p>
             <a href="/test.html">Back to Generator</a>
         </body>
         </html>
     `);
 });
 
-// List QR codes
-app.get('/api/qr/list', (req, res) => {
-    res.json({ success: true, codes: qrCodes });
-});
-
 // Serve static files
 app.use(express.static('public'));
 
 module.exports = app;
+EOF
