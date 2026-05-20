@@ -1,66 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Luban QR System</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luban Coffee QR System</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 0;
             padding: 20px;
         }
         .container {
             background: white;
-            border-radius: 20px;
-            padding: 30px;
+            border-radius: 24px;
+            padding: 40px;
             max-width: 500px;
+            width: 100%;
             text-align: center;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        h1 { color: #4A2C1A; }
-        .status { margin-top: 20px; padding: 10px; border-radius: 10px; }
-        .online { background: #d4edda; color: green; }
-        .offline { background: #f8d7da; color: red; }
-        button {
-            background: #667eea;
+        h1 {
+            color: #4A2C1A;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .online {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 16px;
             cursor: pointer;
             margin-top: 20px;
+        }
+        .coffee-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>☕ Luban Coffee QR System</h1>
-        <p>Dynamic QR Code Generator</p>
-        <div id="status" class="status">Checking API...</div>
-        <button onclick="checkAPI()">Test Connection</button>
-        <p id="result"></p>
+        <div class="coffee-icon">☕</div>
+        <h1>Luban Coffee QR System</h1>
+        <p class="subtitle">Dynamic QR Code Generator</p>
+        <div class="status-card">
+            <p>API Status: <span id="api-status" class="online">Checking...</span></p>
+            <p id="message">Loading...</p>
+        </div>
+        <button class="btn" onclick="checkAPI()">Test Connection</button>
     </div>
     <script>
         async function checkAPI() {
-            const statusDiv = document.getElementById('status');
-            const resultDiv = document.getElementById('result');
+            const statusSpan = document.getElementById('api-status');
+            const messageP = document.getElementById('message');
             try {
                 const response = await fetch('/api/health');
                 const data = await response.json();
                 if (data.status === 'ok') {
-                    statusDiv.innerHTML = '✅ API is ONLINE';
-                    statusDiv.className = 'status online';
-                    resultDiv.innerHTML = 'Your QR system is ready!';
+                    statusSpan.innerHTML = '✅ ONLINE';
+                    statusSpan.className = 'online';
+                    messageP.innerHTML = 'Your QR system is ready! Generate QR codes using the API.';
                 }
             } catch (error) {
-                statusDiv.innerHTML = '❌ API Error';
-                statusDiv.className = 'status offline';
-                resultDiv.innerHTML = error.message;
+                statusSpan.innerHTML = '❌ OFFLINE';
+                statusSpan.className = '';
+                messageP.innerHTML = 'Error: ' + error.message;
             }
         }
         checkAPI();
