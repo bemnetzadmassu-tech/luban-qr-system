@@ -175,12 +175,79 @@
             <div id="manage-tab" class="tab-content">
                 <h2>Manage QR Codes</h2>
                 <p style="margin-bottom: 15px;">Change where your QR codes redirect - NO REPRINT NEEDED!</p>
+				<button class="tab-btn" onclick="showTab('barcode')">📊 Barcode</button>
+<button class="tab-btn" onclick="showTab('barcode-manage')">📋 Manage Barcodes</button>
                 <button class="btn-secondary" onclick="loadCodes()">🔄 Refresh</button>
                 <div id="codes-list" style="margin-top: 20px;">Loading...</div>
             </div>
         </div>
     </div>
+    <!-- Barcode Tab -->
+<div id="barcode-tab" class="tab-content">
+    <div class="card">
+        <h2>Generate Barcode (Same ID as QR)</h2>
+        <div class="info-box">
+            📊 Barcode will contain the SAME ID as your QR code.<br>
+            Perfect for POS and inventory tracking!
+        </div>
+        
+        <div class="form-group">
+            <label>ID (Same as QR Code ID)</label>
+            <input type="text" id="barcode-id" placeholder="TEST001, COF001">
+        </div>
+        
+        <div class="form-group">
+            <label>Barcode Type</label>
+            <select id="barcode-type">
+                <option value="code128">Code 128 (Recommended)</option>
+                <option value="ean13">EAN-13 (13 digits)</option>
+                <option value="upca">UPC-A (12 digits)</option>
+                <option value="code39">Code 39</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Barcode Color</label>
+            <div class="color-row">
+                <input type="color" id="barcode-color" value="#000000">
+                <input type="text" id="barcode-hex" value="#000000" style="flex: 1;">
+            </div>
+        </div>
+        
+        <button onclick="generateBarcode()">📊 Generate Barcode</button>
+        <div id="barcode-result" class="result"></div>
+    </div>
     
+    <!-- Batch Barcode Generator -->
+    <div class="card">
+        <h2>Batch Barcode Generator</h2>
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Prefix</label>
+                <input type="text" id="batch-prefix" placeholder="COF" value="COF">
+            </div>
+            <div class="form-group">
+                <label>Start Number</label>
+                <input type="number" id="batch-start" value="1">
+            </div>
+            <div class="form-group">
+                <label>End Number</label>
+                <input type="number" id="batch-end" value="100">
+            </div>
+        </div>
+        <button onclick="generateBatchBarcodes()">📦 Generate Batch Barcodes</button>
+        <div id="batch-result" class="result"></div>
+    </div>
+</div>
+
+<!-- Barcode Manage Tab -->
+<div id="barcode-manage-tab" class="tab-content">
+    <div class="card">
+        <h2>Manage Barcodes (Same IDs as QR)</h2>
+        <button class="btn-secondary" onclick="loadBarcodes()">🔄 Refresh</button>
+        <div id="barcodes-list" style="margin-top: 20px;">Loading...</div>
+    </div>
+</div>
     <script>
         const baseUrl = window.location.origin;
         
@@ -197,7 +264,165 @@
         const fullUrlPreview = document.getElementById('full-url-preview');
         const fullUrlInput = document.getElementById('full-url');
         const qrIdInput = document.getElementById('qr-id');
+// Barcode color sync
+document.getElementById('barcode-color').addEventListener('input', (e) => {
+    document.getElementById('barcode-hex').value = e.target.value;
+});
+
+async function generateBarcode() {
+    const id = document.getElementById('barcode-id').value;
+    const type = document.getElementById('barcode-type').value;
+    const color = document.getElementById('barcode-color').value;
+    
+    if (!id) {
+        alert('Please enter an ID');
+        return;
+    }
+    
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    
+    try {
+        const response = await fetch('/api/barcode/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: id,
+                barcodeType: type,
+                barColor: color
+            })
+        });
         
+        const data = await response.json();
+        
+        if (data.error) throw new Error(data.error);
+        
+        document.getElementById('barcode-result').innerHTML = `
+            <div class="preview"><img src="${data.image}" alt="Barcode"></div>
+            <p><strong>ID:</strong> ${data.id}</p>
+            <p><strong>Barcode Contains:</strong> ${data.value}</p>
+            <p><strong>Type:</strong> ${type}</p>
+            <button onclick="downloadBarcode('${data.image}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download Barcode</button>
+        `;
+        document.getElementById('barcode-result').classList.add('show');
+        loadBarcodes();
+        
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📊 Generate Barcode';
+    }
+}
+
+async function generateBatchBarcodes() {
+    const prefix = document.getElementById('batch-prefix').value;
+    const start = parseInt(document.getElementById('batch-start').value);
+    const end = parseInt(document.getElementById('batch-end').value);
+    const color = document.getElementById('barcode-color').value;
+    
+    if (!prefix || start >= end) {
+        alert('Enter valid prefix and range');
+        return;
+    }
+    
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    
+    try {
+        const response = await fetch('/api/barcode/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prefix: prefix,
+                startNumber: start,
+                endNumber: end,
+                barColor: color
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) throw new Error(data.error);
+        
+        let previewHtml = `<p>✅ Generated ${data.total} barcodes</p><div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">`;
+        for (let i = 0; i < Math.min(5, data.barcodes.length); i++) {
+            previewHtml += `
+                <div style="text-align: center;">
+                    <img src="${data.barcodes[i].image}" alt="Barcode" style="max-width: 150px;">
+                    <div>${data.barcodes[i].id}</div>
+                </div>
+            `;
+        }
+        previewHtml += `</div><p>📌 All barcodes saved to database with same IDs as QR codes!</p>`;
+        
+        document.getElementById('batch-result').innerHTML = previewHtml;
+        document.getElementById('batch-result').classList.add('show');
+        loadBarcodes();
+        
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📦 Generate Batch Barcodes';
+    }
+}
+
+function downloadBarcode(imageData, filename) {
+    const link = document.createElement('a');
+    link.download = `${filename}_barcode.png`;
+    link.href = imageData;
+    link.click();
+}
+
+async function loadBarcodes() {
+    try {
+        const response = await fetch('/api/qr/list');
+        const data = await response.json();
+        
+        if (!data.codes || data.codes.length === 0) {
+            document.getElementById('barcodes-list').innerHTML = '<p>No barcodes yet. Generate some!</p>';
+            return;
+        }
+        
+        let html = '';
+        for (const code of data.codes) {
+            html += `
+                <div class="code-item">
+                    <div><strong>📊 ${code.id}</strong></div>
+                    <div style="font-size: 12px;">🔗 QR Redirect: ${code.destination_url || 'Not set'}</div>
+                    <div style="font-size: 12px;">📊 QR Scans: ${code.scan_count || 0}</div>
+                    <div style="margin-top: 10px;">
+                        <button class="btn-secondary" onclick="deleteBarcode('${code.id}')" style="background:#dc3545;color:white;">🗑️ Delete</button>
+                    </div>
+                </div>
+            `;
+        }
+        document.getElementById('barcodes-list').innerHTML = html;
+        
+    } catch (error) {
+        document.getElementById('barcodes-list').innerHTML = '<p>Error loading barcodes</p>';
+    }
+}
+
+async function deleteBarcode(id) {
+    if (!confirm(`Delete barcode ${id}?`)) return;
+    
+    try {
+        const response = await fetch(`/api/qr/delete/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        alert(data.message);
+        loadBarcodes();
+        
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
         function updateFullUrlPreview() {
             const id = qrIdInput.value;
             if (id) {

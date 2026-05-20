@@ -157,3 +157,114 @@ app.get('*', (req, res) => {
 });
 
 module.exports = app;
+
+// Generate BARCODE with same ID
+app.post('/api/barcode/generate', async (req, res) => {
+    try {
+        const bwipjs = require('bwip-js');
+        const { id, barcodeType = 'code128', barColor = '#000000' } = req.body;
+        
+        if (!id) {
+            return res.status(400).json({ error: 'ID is required' });
+        }
+        
+        // Generate barcode image
+        const barcodeBuffer = await new Promise((resolve, reject) => {
+            bwipjs.toBuffer({
+                bcid: barcodeType,
+                text: id,
+                scale: 3,
+                height: 12,
+                includetext: true,
+                textxalign: 'center',
+                barcolor: barColor.replace('#', '')
+            }, (err, png) => {
+                if (err) reject(err);
+                else resolve(png);
+            });
+        });
+        
+        const barcodeBase64 = barcodeBuffer.toString('base64');
+        
+        // Also save to database (same table, different type)
+        db.run(
+            'INSERT OR IGNORE INTO qr_codes (id) VALUES (?)',
+            [id],
+            (err) => {
+                if (err) console.error('DB insert error:', err);
+            }
+        );
+        
+        res.json({
+            success: true,
+            image: `data:image/png;base64,${barcodeBase64}`,
+            id: id,
+            value: id,
+            type: barcodeType
+        });
+        
+    } catch (error) {
+        console.error('Barcode error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Batch generate barcodes
+app.post('/api/barcode/batch', async (req, res) => {
+    try {
+        const bwipjs = require('bwip-js');
+        const { prefix, startNumber, endNumber, barcodeType = 'code128', barColor = '#000000' } = req.body;
+        
+        if (!prefix || !startNumber || !endNumber) {
+            return res.status(400).json({ error: 'Prefix, startNumber, endNumber required' });
+        }
+        
+        const total = endNumber - startNumber + 1;
+        if (total > 1000) {
+            return res.status(400).json({ error: 'Maximum 1000 barcodes per batch' });
+        }
+        
+        const results = [];
+        const padLength = String(endNumber).length;
+        
+        for (let i = startNumber; i <= endNumber; i++) {
+            const paddedNumber = String(i).padStart(padLength, '0');
+            const id = `${prefix}${paddedNumber}`;
+            
+            const barcodeBuffer = await new Promise((resolve, reject) => {
+                bwipjs.toBuffer({
+                    bcid: barcodeType,
+                    text: id,
+                    scale: 3,
+                    height: 12,
+                    includetext: true,
+                    textxalign: 'center',
+                    barcolor: barColor.replace('#', '')
+                }, (err, png) => {
+                    if (err) reject(err);
+                    else resolve(png);
+                });
+            });
+            
+            const barcodeBase64 = barcodeBuffer.toString('base64');
+            
+            // Save to database
+            db.run('INSERT OR IGNORE INTO qr_codes (id) VALUES (?)', [id]);
+            
+            results.push({
+                id: id,
+                image: `data:image/png;base64,${barcodeBase64}`
+            });
+        }
+        
+        res.json({
+            success: true,
+            total: results.length,
+            barcodes: results
+        });
+        
+    } catch (error) {
+        console.error('Batch barcode error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
