@@ -1,0 +1,36 @@
+{
+    "redirects": [
+        {
+            "source": "/api/r/(.*)",
+            "destination": "https://qr.lubancoffee.com/api/r/$1",
+            "permanent": true,
+            "statusCode": 301
+        },
+        {
+            "source": "/api/(.*)",
+            "destination": "https://qr.lubancoffee.com/api/$1",
+            "permanent": true,
+            "statusCode": 301
+        },
+        {
+            "source": "/(.*)",
+            "destination": "https://qr.lubancoffee.com/$1",
+            "permanent": true,
+            "statusCode": 301
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/(.*)",
+            "dest": "/api/index.js"
+        },
+        {
+            "src": "/",
+            "dest": "/public/index.html"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/public/$1"
+        }
+    ]
+}

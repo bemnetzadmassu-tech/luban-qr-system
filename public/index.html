@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luban Coffee - Dynamic QR + Barcode System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>☕ Luban Coffee - Dynamic QR + Barcode</h1>
+        <p class="subtitle">One ID for Both • Print Once • Change Destinations Anytime</p>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('create')">✨ Create Code</button>
+            <button class="tab-btn" onclick="showTab('qr')">📱 QR Code</button>
+            <button class="tab-btn" onclick="showTab('barcode')">📊 Barcode</button>
+            <button class="tab-btn" onclick="showTab('manage')">📋 Manage QR</button>
+            <button class="tab-btn" onclick="showTab('barcode-manage')">📋 Manage Barcodes</button>
+            <button class="tab-btn" onclick="showTab('stats')">📊 Stats</button>
+        </div>
+        
+        <!-- Create Code Tab -->
+        <div id="create-tab" class="tab-content active">
+            <div class="card">
+                <h2>1. Create Product Code (One ID for Both)</h2>
+                <div class="info-box">
+                    🎯 One ID will be used for BOTH QR code and Barcode!
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ID (e.g., COF001, YIRG001)</label>
+                        <input type="text" id="code-id" placeholder="COF001">
+                    </div>
+                    <div class="form-group">
+                        <label>Product Name</label>
+                        <input type="text" id="product-name" placeholder="Yirgacheffe Coffee">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Product Type</label>
+                        <input type="text" id="product-type" placeholder="Light Roast">
+                    </div>
+                    <div class="form-group">
+                        <label>Price</label>
+                        <input type="number" id="price" step="0.01" placeholder="24.99">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>QR Destination (Where QR should redirect)</label>
+                    <input type="url" id="qr-destination" placeholder="https://lubancoffee.et/yirgacheffe">
+                </div>
+                <button class="btn-primary" onclick="createCode()">✨ Create Code (One ID for Both)</button>
+                <div id="create-result" class="result"></div>
+            </div>
+        </div>
+        
+        <!-- QR Tab -->
+        <div id="qr-tab" class="tab-content">
+            <div class="card">
+                <h2>2. Generate QR Code (Contains ONLY the ID)</h2>
+                <div class="warning-box">
+                    ⚠️ <strong>IMPORTANT:</strong> The QR code will contain ONLY the ID (e.g., COF001).<br>
+                    This makes it DYNAMIC - you can change where it redirects ANYTIME without reprinting!
+                </div>
+                <div class="form-group">
+                    <label>ID</label>
+                    <input type="text" id="qr-id" placeholder="COF001">
+                </div>
+                <div class="form-group">
+                    <label>QR Dark Color</label>
+                    <div class="color-picker-row">
+                        <input type="color" id="qr-dark" value="#4A2C1A">
+                        <input type="text" id="qr-dark-rgb" placeholder="R,G,B" value="74,44,26">
+                        <div id="dark-preview" class="color-preview" style="background: #4A2C1A;"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>QR Light Color</label>
+                    <div class="color-picker-row">
+                        <input type="color" id="qr-light" value="#F5E6D3">
+                        <input type="text" id="qr-light-rgb" placeholder="R,G,B" value="245,230,211">
+                        <div id="light-preview" class="color-preview" style="background: #F5E6D3;"></div>
+                    </div>
+                </div>
+                <div class="preset-colors">
+                    <button class="preset-btn" onclick="setPreset('#4A2C1A', '#F5E6D3')">☕ Coffee Brown</button>
+                    <button class="preset-btn" onclick="setPreset('#000000', '#FFFFFF')">⚫ Black & White</button>
+                    <button class="preset-btn" onclick="setPreset('#8B4513', '#FFF8E7')">🌰 Yirgacheffe</button>
+                    <button class="preset-btn" onclick="setPreset('#2E7D32', '#FFFFFF')">🌿 Sidama</button>
+                    <button class="preset-btn" onclick="setPreset('#6A1B9A', '#FFFFFF')">🍇 Guji</button>
+                </div>
+                <button class="btn-primary" onclick="generateQR()">📱 Generate QR Code</button>
+                <div id="qr-result" class="result"></div>
+            </div>
+        </div>
+        
+        <!-- Barcode Tab -->
+        <div id="barcode-tab" class="tab-content">
+            <div class="card">
+                <h2>3. Generate Barcode (Same ID - For POS/Inventory)</h2>
+                <div class="form-group">
+                    <label>ID (Same as QR code ID)</label>
+                    <input type="text" id="barcode-id" placeholder="COF001">
+                </div>
+                <div class="form-group">
+                    <label>Barcode Type</label>
+                    <select id="barcode-type">
+                        <option value="code128">Code 128 (Recommended)</option>
+                        <option value="ean13">EAN-13</option>
+                        <option value="upca">UPC-A</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Barcode Color</label>
+                    <div class="color-picker-row">
+                        <input type="color" id="barcode-color" value="#000000">
+                        <input type="text" id="barcode-color-rgb" placeholder="R,G,B" value="0,0,0">
+                        <div id="barcode-preview" class="color-preview" style="background: #000000;"></div>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="generateBarcode()">📊 Generate Barcode</button>
+                <div id="barcode-result" class="result"></div>
+            </div>
+        </div>
+        
+        <!-- Manage QR Tab -->
+        <div id="manage-tab" class="tab-content">
+            <div class="card">
+                <h2>4. Manage QR Codes & Change Destinations (DYNAMIC!)</h2>
+                
+                <!-- API Host Selector -->
+                <div class="api-host-selector">
+                    <h3>🌐 API Host Configuration</h3>
+                    <p style="font-size: 12px; margin-bottom: 10px;">Choose where your API is running. This affects the redirect URL.</p>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>API Host Type</label>
+                            <select id="api-host-type" onchange="updateApiHost()">
+                                <option value="localhost">🏠 Localhost (http://localhost:3000)</option>
+                                <option value="ip">📡 IP Address (Same WiFi)</option>
+                                <option value="vercel">🌍 Vercel (Anywhere)</option>
+                                <option value="custom">⚙️ Custom URL</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group" id="ip-address-group" style="display: none;">
+                            <label>Your IP Address</label>
+                            <input type="text" id="ip-address" placeholder="192.168.1.100">
+                            <small>Find your IP using: ipconfig (Windows) or ifconfig (Mac/Linux)</small>
+                        </div>
+                        
+                        <div class="form-group" id="custom-url-group" style="display: none;">
+                            <label>Custom API URL</label>
+                            <input type="text" id="custom-url" placeholder="https://your-api.com">
+                        </div>
+						<!-- Domain Management Section -->
+<div class="domain-manager" style="background: #e8f5e9; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #4caf50;">
+    <h3>🔄 Domain Management (301 Redirect)</h3>
+    <p style="font-size: 12px; margin-bottom: 10px;">Set up 301 redirects to change your domain without reprinting QR codes.</p>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label>Current/Old Domain</label>
+            <input type="text" id="old-domain" placeholder="coffee-qr-system.vercel.app" value="luban-qr-system.vercel.app">
+        </div>
+        <div class="form-group">
+            <label>New Domain</label>
+            <input type="text" id="new-domain" placeholder="qr.lubancoffee.com">
+        </div>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <button class="btn-secondary" onclick="generateRedirectCode()">🔗 Generate Redirect Info</button>
+        </div>
+        <div class="form-group">
+            <button class="btn-secondary" onclick="copyRedirectConfig()">📋 Copy Vercel Config</button>
+        </div>
+    </div>
+    
+    <div id="redirect-info" style="margin-top: 15px; display: none;">
+        <div class="info-box">
+            <strong>📝 Add this to your vercel.json:</strong>
+            <pre id="redirect-config" style="background: #1a1a2e; color: white; padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 11px; margin-top: 10px;"></pre>
+        </div>
+    </div>
+</div>
+<!-- Test Redirect Section -->
+<div class="redirect-tester" style="background: #f3e5f5; padding: 20px; border-radius: 12px; margin-top: 20px;">
+    <h3>🧪 Test 301 Redirect</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>QR Code ID to Test</label>
+            <input type="text" id="test-redirect-code" placeholder="COF001">
+        </div>
+        <div class="form-group">
+            <button class="btn-secondary" onclick="testRedirect()" style="margin-top: 24px;">🔍 Test Redirect</button>
+        </div>
+    </div>
+    <div id="redirect-test-result"></div>
+</div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button class="btn-secondary" onclick="applyHostToAll()" style="width: 100%;">🔄 Apply to ALL QR Codes</button>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn-secondary" onclick="refreshCurrentHost()" style="width: 100%;">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    
+                    <div id="current-api-info" class="current-api-info">
+                        Current API Base: Loading...
+                    </div>
+                </div>
+                
+                <button class="btn-secondary" onclick="loadCodes()">🔄 Refresh QR Code List</button>
+                <div id="codes-list" style="margin-top: 20px;">Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Manage Barcodes Tab -->
+        <div id="barcode-manage-tab" class="tab-content">
+            <div class="card">
+                <h2>5. Manage Barcodes</h2>
+                <button class="btn-secondary" onclick="loadBarcodes()">🔄 Refresh</button>
+                <div id="barcodes-list" style="margin-top: 20px;">Loading...</div>
+            </div>
+        </div>
+        
+        <!-- Statistics Tab -->
+        <div id="stats-tab" class="tab-content">
+            <div class="card">
+                <h2>6. Statistics & Analytics</h2>
+                <div id="stats-content">Loading...</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
