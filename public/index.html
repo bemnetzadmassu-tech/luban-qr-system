@@ -12,7 +12,7 @@
             min-height: 100vh;
             padding: 40px 20px;
         }
-        .container { max-width: 600px; margin: 0 auto; }
+        .container { max-width: 800px; margin: 0 auto; }
         .card {
             background: white;
             border-radius: 24px;
@@ -21,11 +21,25 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         h1 { text-align: center; color: white; margin-bottom: 20px; }
-        h2 { color: #333; margin-bottom: 20px; }
+        h2 { color: #333; margin-bottom: 20px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
-        input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
-        .color-row { display: flex; gap: 10px; align-items: center; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn {
+            background: #f0f0f0;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -36,6 +50,13 @@
             font-weight: 600;
             cursor: pointer;
             width: 100%;
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            width: auto;
+            padding: 8px 20px;
+            margin: 5px;
         }
         .result {
             margin-top: 20px;
@@ -54,6 +75,14 @@
             margin-bottom: 20px;
             font-size: 14px;
         }
+        .code-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .color-row { display: flex; gap: 10px; align-items: center; }
     </style>
 </head>
 <body>
@@ -63,31 +92,47 @@
         <div class="card">
             <div class="info-box">
                 🎯 <strong>How it works:</strong><br>
-                QR Code contains ONLY the ID (e.g., COF001)<br>
-                You can change where it redirects ANYTIME without reprinting!
+                • QR Code contains ONLY the ID (e.g., COF001)<br>
+                • You can change where it redirects ANYTIME without reprinting!<br>
+                • Scan count tracks how many people scanned each code
             </div>
             
-            <h2>Generate QR Code</h2>
-            <div class="form-group">
-                <label>QR Code ID (e.g., COF001, TEST001)</label>
-                <input type="text" id="qr-id" placeholder="COF001">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('generate')">📱 Generate QR</button>
+                <button class="tab-btn" onclick="showTab('manage')">📋 Manage Codes</button>
             </div>
-            <div class="form-group">
-                <label>Dark Color</label>
-                <div class="color-row">
-                    <input type="color" id="dark-color" value="#4A2C1A">
-                    <input type="text" id="dark-hex" value="#4A2C1A" style="flex: 1;">
+            
+            <!-- Generate Tab -->
+            <div id="generate-tab" class="tab-content active">
+                <h2>Generate QR Code</h2>
+                <div class="form-group">
+                    <label>QR Code ID (e.g., COF001, TEST001)</label>
+                    <input type="text" id="qr-id" placeholder="COF001">
                 </div>
-            </div>
-            <div class="form-group">
-                <label>Light Color</label>
-                <div class="color-row">
-                    <input type="color" id="light-color" value="#F5E6D3">
-                    <input type="text" id="light-hex" value="#F5E6D3" style="flex: 1;">
+                <div class="form-group">
+                    <label>Dark Color</label>
+                    <div class="color-row">
+                        <input type="color" id="dark-color" value="#4A2C1A">
+                        <input type="text" id="dark-hex" value="#4A2C1A" style="flex: 1;">
+                    </div>
                 </div>
+                <div class="form-group">
+                    <label>Light Color</label>
+                    <div class="color-row">
+                        <input type="color" id="light-color" value="#F5E6D3">
+                        <input type="text" id="light-hex" value="#F5E6D3" style="flex: 1;">
+                    </div>
+                </div>
+                <button onclick="generateQR()">🚀 Generate QR Code</button>
+                <div id="result" class="result"></div>
             </div>
-            <button onclick="generateQR()">🚀 Generate QR Code</button>
-            <div id="result" class="result"></div>
+            
+            <!-- Manage Tab -->
+            <div id="manage-tab" class="tab-content">
+                <h2>Manage QR Codes</h2>
+                <button class="btn-secondary" onclick="loadCodes()">🔄 Refresh</button>
+                <div id="codes-list" style="margin-top: 20px;">Loading...</div>
+            </div>
         </div>
     </div>
     
@@ -99,6 +144,14 @@
         document.getElementById('light-color').addEventListener('input', (e) => {
             document.getElementById('light-hex').value = e.target.value;
         });
+        
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            event.target.classList.add('active');
+            if (tabName === 'manage') loadCodes();
+        }
         
         async function generateQR() {
             const id = document.getElementById('qr-id').value;
@@ -132,10 +185,14 @@
                 document.getElementById('result').innerHTML = `
                     <div class="preview"><img src="${data.image}" alt="QR Code"></div>
                     <p><strong>QR Contains:</strong> <code>${data.content}</code></p>
-                    <p>✅ This QR code is DYNAMIC! You can change where it redirects anytime.</p>
+                    <div class="info-box" style="background: #d4edda;">
+                        ✅ This QR code is DYNAMIC!<br>
+                        You can change where it redirects in the Manage tab.
+                    </div>
                     <button onclick="downloadQR('${data.image}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download QR Code</button>
                 `;
                 document.getElementById('result').classList.add('show');
+                loadCodes();
                 
             } catch (error) {
                 alert('Error: ' + error.message);
@@ -151,6 +208,84 @@
             link.href = imageData;
             link.click();
         }
+        
+        async function loadCodes() {
+            try {
+                const response = await fetch('/api/qr/list');
+                const data = await response.json();
+                
+                if (!data.codes || data.codes.length === 0) {
+                    document.getElementById('codes-list').innerHTML = '<p>No QR codes yet. Generate some!</p>';
+                    return;
+                }
+                
+                let html = '';
+                for (const code of data.codes) {
+                    html += `
+                        <div class="code-item">
+                            <div><strong>📱 ${code.id}</strong></div>
+                            <div style="font-size: 12px;">🎯 Current destination: ${code.destination_url || 'Not set'}</div>
+                            <div style="font-size: 12px;">📊 Scans: ${code.scan_count || 0}</div>
+                            <div style="margin-top: 10px;">
+                                <input type="text" id="edit-${code.id}" placeholder="New destination URL (e.g., https://google.com)" style="padding: 6px; width: 250px;">
+                                <button class="btn-secondary" onclick="updateDestination('${code.id}')">✏️ Update Destination</button>
+                                <button class="btn-secondary" onclick="deleteCode('${code.id}')" style="background:#dc3545;color:white;">🗑️ Delete</button>
+                            </div>
+                            <div style="font-size: 11px; color: #666; margin-top: 10px;">
+                                🔗 Scan URL: ${window.location.origin}/api/r/${code.id}
+                            </div>
+                        </div>
+                    `;
+                }
+                document.getElementById('codes-list').innerHTML = html;
+                
+            } catch (error) {
+                document.getElementById('codes-list').innerHTML = '<p>Error loading codes</p>';
+            }
+        }
+        
+        async function updateDestination(id) {
+            const newUrl = document.getElementById(`edit-${id}`).value;
+            if (!newUrl) {
+                alert('Enter a destination URL');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/qr/update/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ destinationUrl: newUrl })
+                });
+                
+                const data = await response.json();
+                alert(data.message);
+                loadCodes();
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        async function deleteCode(id) {
+            if (!confirm(`Delete QR code ${id}?`)) return;
+            
+            try {
+                const response = await fetch(`/api/qr/delete/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                alert(data.message);
+                loadCodes();
+                
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        // Initial load
+        loadCodes();
     </script>
 </body>
 </html>
