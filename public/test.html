@@ -1,250 +1,40 @@
-cat > public/test.html << 'EOF'
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luban QR System - Test Page</title>
+    <title>Luban QR System</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 500px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        h1 {
-            color: #4A2C1A;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .status {
-            text-align: center;
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        .online {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .offline {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #555;
-        }
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-        }
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 14px 30px;
-            border-radius: 30px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 10px;
-        }
-        .result {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            text-align: center;
-            display: none;
-        }
-        .result.show {
-            display: block;
-        }
-        .preview img {
-            max-width: 200px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 10px;
-            background: white;
-        }
-        .success {
-            color: green;
-            font-weight: bold;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
-        hr {
-            margin: 20px 0;
-            border: none;
-            border-top: 1px solid #ddd;
-        }
+        body { font-family: Arial; text-align: center; padding: 50px; background: #1a1a2e; color: white; }
+        .container { background: white; color: black; padding: 30px; border-radius: 20px; max-width: 500px; margin: 0 auto; }
+        .status { padding: 10px; border-radius: 10px; margin-bottom: 20px; }
+        .online { background: #d4edda; color: green; }
+        button { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>☕ Luban Coffee QR System</h1>
-        
-        <div id="api-status" class="status">Checking API...</div>
-        
-        <div class="form-group">
-            <label>QR Code ID (e.g., COF001, TEST001)</label>
-            <input type="text" id="qr-id" placeholder="COF001">
-        </div>
-        
-        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div class="form-group">
-                <label>Dark Color</label>
-                <input type="color" id="qr-dark" value="#4A2C1A">
-            </div>
-            <div class="form-group">
-                <label>Light Color</label>
-                <input type="color" id="qr-light" value="#F5E6D3">
-            </div>
-        </div>
-        
-        <button onclick="generateQR()">🚀 Generate QR Code</button>
-        
-        <div id="result" class="result"></div>
-        
-        <hr>
-        
-        <h3>🧪 Test Redirect</h3>
-        <div class="form-group">
-            <label>QR Code ID to Test</label>
-            <input type="text" id="test-id" placeholder="COF001">
-        </div>
-        <button onclick="testRedirect()">🔗 Test Redirect URL</button>
-        <div id="redirect-result" style="margin-top: 10px; font-size: 12px;"></div>
+        <div id="status" class="status">Checking API...</div>
+        <button onclick="checkAPI()">Test API Connection</button>
+        <p id="result"></p>
     </div>
-    
     <script>
-        const baseUrl = window.location.origin;
-        
-        // Check API status
-        async function checkApiStatus() {
-            const statusDiv = document.getElementById('api-status');
+        async function checkAPI() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
             try {
-                const response = await fetch(`${baseUrl}/api/health`);
-                if (response.ok) {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                if (data.status === 'ok') {
                     statusDiv.innerHTML = '✅ API is ONLINE';
                     statusDiv.className = 'status online';
-                } else {
-                    throw new Error('API not responding');
+                    resultDiv.innerHTML = 'Your QR system is working!';
                 }
             } catch (error) {
-                statusDiv.innerHTML = '❌ API is OFFLINE - Check server';
-                statusDiv.className = 'status offline';
+                statusDiv.innerHTML = '❌ API Error';
+                resultDiv.innerHTML = error.message;
             }
         }
-        
-        // Generate QR Code
-        async function generateQR() {
-            const id = document.getElementById('qr-id').value;
-            const dark = document.getElementById('qr-dark').value;
-            const light = document.getElementById('qr-light').value;
-            
-            if (!id) {
-                alert('Please enter a QR Code ID');
-                return;
-            }
-            
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = 'Generating...';
-            
-            try {
-                const response = await fetch(`${baseUrl}/api/qr/generate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        content: id,
-                        qrDarkColor: dark,
-                        qrLightColor: light
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                document.getElementById('result').innerHTML = `
-                    <div class="preview"><img src="${data.image}" alt="QR Code"></div>
-                    <p><strong>QR Contains:</strong> <code>${data.content}</code></p>
-                    <p class="success">✅ QR Code Generated Successfully!</p>
-                    <button onclick="downloadQR('${data.image}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download QR Code</button>
-                `;
-                document.getElementById('result').classList.add('show');
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🚀 Generate QR Code';
-            }
-        }
-        
-        function downloadQR(imageData, filename) {
-            const link = document.createElement('a');
-            link.download = `${filename}.png`;
-            link.href = imageData;
-            link.click();
-        }
-        
-        // Test redirect
-        async function testRedirect() {
-            const id = document.getElementById('test-id').value;
-            if (!id) {
-                alert('Enter a QR Code ID');
-                return;
-            }
-            
-            const redirectUrl = `${baseUrl}/api/r/${id}`;
-            document.getElementById('redirect-result').innerHTML = `Testing: ${redirectUrl}`;
-            
-            try {
-                const response = await fetch(redirectUrl);
-                document.getElementById('redirect-result').innerHTML = `
-                    ✅ Redirect test completed<br>
-                    URL: ${redirectUrl}<br>
-                    Status: ${response.status}<br>
-                    ${response.redirected ? `Redirects to: ${response.url}` : 'No redirect detected'}
-                `;
-            } catch (error) {
-                document.getElementById('redirect-result').innerHTML = `❌ Error: ${error.message}`;
-            }
-        }
-        
-        // Initialize
-        checkApiStatus();
+        checkAPI();
     </script>
 </body>
 </html>
-EOF
