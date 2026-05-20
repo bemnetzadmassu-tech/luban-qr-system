@@ -5,33 +5,30 @@
     <style>
         body { font-family: Arial; text-align: center; padding: 50px; background: #1a1a2e; color: white; }
         .container { background: white; color: black; padding: 30px; border-radius: 20px; max-width: 500px; margin: 0 auto; }
-        .status { padding: 10px; border-radius: 10px; margin-bottom: 20px; }
+        .status { padding: 10px; border-radius: 10px; margin-top: 20px; }
         .online { background: #d4edda; color: green; }
-        button { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        .offline { background: #f8d7da; color: red; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>☕ Luban Coffee QR System</h1>
-        <div id="status" class="status">Checking API...</div>
-        <button onclick="checkAPI()">Test API Connection</button>
-        <p id="result"></p>
+        <p>API Status: <span id="status" class="status">Checking...</span></p>
+        <button onclick="checkAPI()">Test Connection</button>
     </div>
     <script>
         async function checkAPI() {
             const statusDiv = document.getElementById('status');
-            const resultDiv = document.getElementById('result');
             try {
                 const response = await fetch('/api/health');
                 const data = await response.json();
                 if (data.status === 'ok') {
                     statusDiv.innerHTML = '✅ API is ONLINE';
                     statusDiv.className = 'status online';
-                    resultDiv.innerHTML = 'Your QR system is working!';
                 }
             } catch (error) {
-                statusDiv.innerHTML = '❌ API Error';
-                resultDiv.innerHTML = error.message;
+                statusDiv.innerHTML = '❌ API Error: ' + error.message;
+                statusDiv.className = 'status offline';
             }
         }
         checkAPI();
