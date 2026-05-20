@@ -3,91 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luban Coffee QR System</title>
+    <title>Luban Coffee - Dynamic QR System</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            padding: 40px 20px;
         }
-        .container {
+        .container { max-width: 600px; margin: 0 auto; }
+        .card {
             background: white;
             border-radius: 24px;
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
+            padding: 30px;
+            margin-bottom: 30px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        h1 {
-            color: #4A2C1A;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-        }
-        .status-card {
-            background: #f8f9fa;
-            border-radius: 16px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .online {
-            color: #28a745;
-            font-weight: bold;
-        }
-        .btn {
+        h1 { text-align: center; color: white; margin-bottom: 20px; }
+        h2 { color: #333; margin-bottom: 20px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
+        .color-row { display: flex; gap: 10px; align-items: center; }
+        button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 14px 30px;
             border-radius: 30px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 20px;
+            width: 100%;
         }
-        .coffee-icon {
-            font-size: 48px;
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 16px;
+            text-align: center;
+            display: none;
+        }
+        .result.show { display: block; }
+        .preview img { max-width: 200px; margin: 10px; }
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 12px;
             margin-bottom: 20px;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="coffee-icon">☕</div>
-        <h1>Luban Coffee QR System</h1>
-        <p class="subtitle">Dynamic QR Code Generator</p>
-        <div class="status-card">
-            <p>API Status: <span id="api-status" class="online">Checking...</span></p>
-            <p id="message">Loading...</p>
+        <h1>☕ Luban Coffee - Dynamic QR System</h1>
+        
+        <div class="card">
+            <div class="info-box">
+                🎯 <strong>How it works:</strong><br>
+                QR Code contains ONLY the ID (e.g., COF001)<br>
+                You can change where it redirects ANYTIME without reprinting!
+            </div>
+            
+            <h2>Generate QR Code</h2>
+            <div class="form-group">
+                <label>QR Code ID (e.g., COF001, TEST001)</label>
+                <input type="text" id="qr-id" placeholder="COF001">
+            </div>
+            <div class="form-group">
+                <label>Dark Color</label>
+                <div class="color-row">
+                    <input type="color" id="dark-color" value="#4A2C1A">
+                    <input type="text" id="dark-hex" value="#4A2C1A" style="flex: 1;">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Light Color</label>
+                <div class="color-row">
+                    <input type="color" id="light-color" value="#F5E6D3">
+                    <input type="text" id="light-hex" value="#F5E6D3" style="flex: 1;">
+                </div>
+            </div>
+            <button onclick="generateQR()">🚀 Generate QR Code</button>
+            <div id="result" class="result"></div>
         </div>
-        <button class="btn" onclick="checkAPI()">Test Connection</button>
     </div>
+    
     <script>
-        async function checkAPI() {
-            const statusSpan = document.getElementById('api-status');
-            const messageP = document.getElementById('message');
+        // Sync color pickers
+        document.getElementById('dark-color').addEventListener('input', (e) => {
+            document.getElementById('dark-hex').value = e.target.value;
+        });
+        document.getElementById('light-color').addEventListener('input', (e) => {
+            document.getElementById('light-hex').value = e.target.value;
+        });
+        
+        async function generateQR() {
+            const id = document.getElementById('qr-id').value;
+            const darkColor = document.getElementById('dark-color').value;
+            const lightColor = document.getElementById('light-color').value;
+            
+            if (!id) {
+                alert('Please enter a QR Code ID');
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            
             try {
-                const response = await fetch('/api/health');
+                const response = await fetch('/api/qr/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: id,
+                        darkColor: darkColor,
+                        lightColor: lightColor
+                    })
+                });
+                
                 const data = await response.json();
-                if (data.status === 'ok') {
-                    statusSpan.innerHTML = '✅ ONLINE';
-                    statusSpan.className = 'online';
-                    messageP.innerHTML = 'Your QR system is ready! Generate QR codes using the API.';
-                }
+                
+                if (data.error) throw new Error(data.error);
+                
+                document.getElementById('result').innerHTML = `
+                    <div class="preview"><img src="${data.image}" alt="QR Code"></div>
+                    <p><strong>QR Contains:</strong> <code>${data.content}</code></p>
+                    <p>✅ This QR code is DYNAMIC! You can change where it redirects anytime.</p>
+                    <button onclick="downloadQR('${data.image}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download QR Code</button>
+                `;
+                document.getElementById('result').classList.add('show');
+                
             } catch (error) {
-                statusSpan.innerHTML = '❌ OFFLINE';
-                statusSpan.className = '';
-                messageP.innerHTML = 'Error: ' + error.message;
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Generate QR Code';
             }
         }
-        checkAPI();
+        
+        function downloadQR(imageData, filename) {
+            const link = document.createElement('a');
+            link.download = `${filename}.png`;
+            link.href = imageData;
+            link.click();
+        }
     </script>
 </body>
 </html>
