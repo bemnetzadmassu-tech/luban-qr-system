@@ -117,3 +117,23 @@ app.get('*', (req, res) => {
 });
 
 module.exports = app;
+
+// Create QR code in database
+app.post('/api/qr/create', (req, res) => {
+    const { id } = req.body;
+    
+    if (!id) {
+        return res.status(400).json({ error: 'ID is required' });
+    }
+    
+    db.run(
+        'INSERT OR IGNORE INTO qr_codes (id) VALUES (?)',
+        [id],
+        function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ success: true, id: id, message: `QR code ${id} saved to database` });
+        }
+    );
+});
