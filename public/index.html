@@ -1,14 +1,69 @@
 <!DOCTYPE html>
 <html>
-<head><title>Luban QR</title></head>
+<head>
+    <title>Luban QR System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #4A2C1A; }
+        .status { margin-top: 20px; padding: 10px; border-radius: 10px; }
+        .online { background: #d4edda; color: green; }
+        .offline { background: #f8d7da; color: red; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
 <body>
-    <h1>☕ Luban Coffee QR System</h1>
-    <p>API Status: <span id="status">Checking...</span></p>
+    <div class="container">
+        <h1>☕ Luban Coffee QR System</h1>
+        <p>Dynamic QR Code Generator</p>
+        <div id="status" class="status">Checking API...</div>
+        <button onclick="checkAPI()">Test Connection</button>
+        <p id="result"></p>
+    </div>
     <script>
-        fetch('/api/health')
-            .then(r => r.json())
-            .then(data => document.getElementById('status').innerHTML = data.status)
-            .catch(e => document.getElementById('status').innerHTML = 'Error: ' + e.message);
+        async function checkAPI() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+                if (data.status === 'ok') {
+                    statusDiv.innerHTML = '✅ API is ONLINE';
+                    statusDiv.className = 'status online';
+                    resultDiv.innerHTML = 'Your QR system is ready!';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ API Error';
+                statusDiv.className = 'status offline';
+                resultDiv.innerHTML = error.message;
+            }
+        }
+        checkAPI();
     </script>
 </body>
 </html>
