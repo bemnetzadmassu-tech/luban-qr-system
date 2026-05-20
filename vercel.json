@@ -3,20 +3,17 @@
         {
             "source": "/api/r/(.*)",
             "destination": "https://qr.lubancoffee.com/api/r/$1",
-            "permanent": true,
-            "statusCode": 301
+            "permanent": true
         },
         {
             "source": "/api/(.*)",
             "destination": "https://qr.lubancoffee.com/api/$1",
-            "permanent": true,
-            "statusCode": 301
+            "permanent": true
         },
         {
             "source": "/(.*)",
             "destination": "https://qr.lubancoffee.com/$1",
-            "permanent": true,
-            "statusCode": 301
+            "permanent": true
         }
     ],
     "routes": [
