@@ -1,8 +1,10 @@
 {
     "name": "luban-qr-system",
     "version": "1.0.0",
-    "description": "Dynamic QR System",
     "main": "api/index.js",
+    "scripts": {
+        "vercel-build": "npm install"
+    },
     "dependencies": {
         "express": "^4.18.2",
         "cors": "^2.8.5"
