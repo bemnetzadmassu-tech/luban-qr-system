@@ -90,15 +90,21 @@ app.post('/api/qr/generate', async (req, res) => {
 // ============================================
 // LIST ALL QR CODES
 // ============================================
+// ============================================
+// LIST ALL QR CODES (WITH PRODUCT FIELDS)
+// ============================================
 app.get('/api/qr/list', async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT id, destination_url, scan_count, created_at 
+            SELECT id, destination_url, scan_count, created_at,
+                   page_type, product_name, product_price, product_description
             FROM qr_codes 
             ORDER BY created_at DESC
         `);
+        console.log(`📋 Retrieved ${result.rows.length} QR codes`);
         res.json({ success: true, codes: result.rows });
     } catch (error) {
+        console.error('List error:', error);
         res.json({ success: true, codes: [] });
     }
 });
@@ -136,19 +142,23 @@ app.delete('/api/qr/delete/:id', async (req, res) => {
 });
 
 // ============================================
-// UPDATE PRODUCT PAGE
+// UPDATE PRODUCT PAGE (FIXED)
 // ============================================
 app.put('/api/qr/update-product/:id', async (req, res) => {
     const { id } = req.params;
     const { productName, productPrice, productDescription } = req.body;
     
+    console.log(`📝 Saving product page for ${id}:`, { productName, productPrice, productDescription });
+    
     try {
+        // Ensure columns exist
         await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_name TEXT`);
         await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_price DECIMAL(10,2)`);
         await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_description TEXT`);
         await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS page_type TEXT DEFAULT 'redirect'`);
         
-        await pool.query(`
+        // Update the record
+        const result = await pool.query(`
             UPDATE qr_codes 
             SET page_type = 'product', 
                 product_name = $1, 
@@ -156,32 +166,46 @@ app.put('/api/qr/update-product/:id', async (req, res) => {
                 product_description = $3,
                 destination_url = NULL
             WHERE id = $4
+            RETURNING *
         `, [productName, productPrice, productDescription, id]);
         
-        res.json({ success: true, message: `Product page updated for ${id}` });
+        if (result.rows.length === 0) {
+            // If record doesn't exist, create it
+            await pool.query(`
+                INSERT INTO qr_codes (id, page_type, product_name, product_price, product_description)
+                VALUES ($1, 'product', $2, $3, $4)
+            `, [id, productName, productPrice, productDescription]);
+        }
+        
+        console.log(`✅ Saved product page for ${id}: ${productName}`);
+        res.json({ success: true, message: `Product page saved for ${id}` });
+        
     } catch (error) {
+        console.error('Update product error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
 // ============================================
-// GET PRODUCT INFO
+// GET PRODUCT INFO (FIXED)
 // ============================================
 app.get('/api/qr/product/:id', async (req, res) => {
     const { id } = req.params;
     
     try {
         const result = await pool.query(`
-            SELECT product_name, product_price, product_description, page_type
-            FROM qr_codes WHERE id = $1
+            SELECT id, page_type, product_name, product_price, product_description, destination_url
+            FROM qr_codes 
+            WHERE id = $1
         `, [id]);
         
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Product not found' });
+            return res.json({ success: true, product: { page_type: 'redirect' } });
         }
         
         res.json({ success: true, product: result.rows[0] });
     } catch (error) {
+        console.error('Get product error:', error);
         res.status(500).json({ error: error.message });
     }
 });
