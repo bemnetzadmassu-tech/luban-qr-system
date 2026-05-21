@@ -260,3 +260,54 @@ app.get('*', (req, res) => {
 });
 
 module.exports = app;
+
+// Generate QR Code with SVG support
+app.post('/api/qr/generate', async (req, res) => {
+    try {
+        const { content, darkColor = '#4A2C1A', lightColor = '#F5E6D3', format = 'png' } = req.body;
+        
+        if (!content) {
+            return res.status(400).json({ error: 'Content is required' });
+        }
+        
+        if (format === 'svg') {
+            // Generate SVG
+            const svgString = await QRCode.toString(content, {
+                type: 'svg',
+                width: 500,
+                margin: 2,
+                color: { dark: darkColor, light: lightColor === 'transparent' ? 'transparent' : lightColor },
+                errorCorrectionLevel: 'H'
+            });
+            
+            res.json({
+                success: true,
+                svgContent: svgString,
+                content: content,
+                format: 'svg'
+            });
+        } else {
+            // Generate PNG (default)
+            const qrBuffer = await QRCode.toBuffer(content, {
+                type: 'png',
+                width: 500,
+                margin: 2,
+                color: { dark: darkColor, light: lightColor === 'transparent' ? 'transparent' : lightColor },
+                errorCorrectionLevel: 'H'
+            });
+            
+            const qrBase64 = qrBuffer.toString('base64');
+            
+            res.json({
+                success: true,
+                image: `data:image/png;base64,${qrBase64}`,
+                content: content,
+                format: 'png'
+            });
+        }
+        
+    } catch (error) {
+        console.error('QR error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
