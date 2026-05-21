@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -14,12 +15,12 @@ app.use(express.json());
 // ============================================
 const pool = new Pool({
     connectionString: process.env.POSTGRES_URL,
+    ssl: { rejectUnauthorized: false }
 });
 
 // Initialize database tables
 async function initDB() {
     try {
-        // Main table - ONE ID for BOTH QR and Barcode!
         await pool.query(`
             CREATE TABLE IF NOT EXISTS codes (
                 id TEXT PRIMARY KEY,
@@ -36,7 +37,6 @@ async function initDB() {
             )
         `);
         
-        // Scan logs table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS scan_logs (
                 id SERIAL PRIMARY KEY,
@@ -48,9 +48,9 @@ async function initDB() {
             )
         `);
         
-        console.log('✅ PostgreSQL database initialized');
+        console.log('✅ PostgreSQL tables ready');
     } catch (error) {
-        console.error('DB init error:', error);
+        console.error('DB init error:', error.message);
     }
 }
 
@@ -87,31 +87,68 @@ app.post('/api/qr/create', async (req, res) => {
 });
 
 // ============================================
-// GENERATE QR CODE IMAGE
+// GENERATE QR CODE (PNG or SVG)
 // ============================================
 app.post('/api/qr/generate', async (req, res) => {
     try {
-        const { content, darkColor = '#4A2C1A', lightColor = '#F5E6D3' } = req.body;
+        const { content, darkColor = '#D4AF37', lightColor = '#FFFFFF', format = 'png' } = req.body;
         
         if (!content) {
             return res.status(400).json({ error: 'Content is required' });
         }
         
-        const qrBuffer = await QRCode.toBuffer(content, {
-            type: 'png',
-            width: 500,
-            margin: 2,
-            color: { dark: darkColor, light: lightColor },
-            errorCorrectionLevel: 'H'
-        });
+        // Handle light color - if 'transparent' string is sent, use white with opacity (not true transparent)
+        let finalLightColor = lightColor;
         
-        const qrBase64 = qrBuffer.toString('base64');
+        // For QR code, we need a valid color. Use white for "transparent" look on white backgrounds
+        if (lightColor === 'transparent' || lightColor === 'Transparent') {
+            finalLightColor = '#FFFFFF';
+        }
         
-        res.json({
-            success: true,
-            image: `data:image/png;base64,${qrBase64}`,
-            content: content
-        });
+        // Ensure colors are valid hex
+        const hexPattern = /^#[0-9A-Fa-f]{6}$/;
+        if (!hexPattern.test(darkColor)) {
+            return res.status(400).json({ error: `Invalid dark color: ${darkColor}` });
+        }
+        if (!hexPattern.test(finalLightColor)) {
+            return res.status(400).json({ error: `Invalid light color: ${finalLightColor}` });
+        }
+        
+        if (format === 'svg') {
+            // Generate SVG
+            const svgString = await QRCode.toString(content, {
+                type: 'svg',
+                width: 500,
+                margin: 2,
+                color: { dark: darkColor, light: finalLightColor },
+                errorCorrectionLevel: 'H'
+            });
+            
+            res.json({
+                success: true,
+                svgContent: svgString,
+                content: content,
+                format: 'svg'
+            });
+        } else {
+            // Generate PNG
+            const qrBuffer = await QRCode.toBuffer(content, {
+                type: 'png',
+                width: 500,
+                margin: 2,
+                color: { dark: darkColor, light: finalLightColor },
+                errorCorrectionLevel: 'H'
+            });
+            
+            const qrBase64 = qrBuffer.toString('base64');
+            
+            res.json({
+                success: true,
+                image: `data:image/png;base64,${qrBase64}`,
+                content: content,
+                format: 'png'
+            });
+        }
         
     } catch (error) {
         console.error('QR error:', error);
@@ -338,55 +375,12 @@ app.get('*', (req, res) => {
     }
 });
 
-module.exports = app;
+// Start server only if not on Vercel
+if (require.main === module) {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running at http://localhost:${PORT}`);
+    });
+}
 
-// Generate QR Code with SVG support
-app.post('/api/qr/generate', async (req, res) => {
-    try {
-        const { content, darkColor = '#4A2C1A', lightColor = '#F5E6D3', format = 'png' } = req.body;
-        
-        if (!content) {
-            return res.status(400).json({ error: 'Content is required' });
-        }
-        
-        if (format === 'svg') {
-            // Generate SVG
-            const svgString = await QRCode.toString(content, {
-                type: 'svg',
-                width: 500,
-                margin: 2,
-                color: { dark: darkColor, light: lightColor === 'transparent' ? 'transparent' : lightColor },
-                errorCorrectionLevel: 'H'
-            });
-            
-            res.json({
-                success: true,
-                svgContent: svgString,
-                content: content,
-                format: 'svg'
-            });
-        } else {
-            // Generate PNG (default)
-            const qrBuffer = await QRCode.toBuffer(content, {
-                type: 'png',
-                width: 500,
-                margin: 2,
-                color: { dark: darkColor, light: lightColor === 'transparent' ? 'transparent' : lightColor },
-                errorCorrectionLevel: 'H'
-            });
-            
-            const qrBase64 = qrBuffer.toString('base64');
-            
-            res.json({
-                success: true,
-                image: `data:image/png;base64,${qrBase64}`,
-                content: content,
-                format: 'png'
-            });
-        }
-        
-    } catch (error) {
-        console.error('QR error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
+module.exports = app;

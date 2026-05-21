@@ -335,20 +335,23 @@
             document.getElementById('batch-barcode-hex').value = e.target.value;
         });
         
-        // Transparent background checkbox
-        document.getElementById('transparent-bg').addEventListener('change', (e) => {
-            const lightColorInput = document.getElementById('light-color');
-            const lightHexInput = document.getElementById('light-hex');
-            if (e.target.checked) {
-                lightColorInput.disabled = true;
-                lightHexInput.disabled = true;
-                lightColorInput.style.opacity = '0.5';
-            } else {
-                lightColorInput.disabled = false;
-                lightHexInput.disabled = false;
-                lightColorInput.style.opacity = '1';
-            }
-        });
+       // Replace the transparent checkbox logic with:
+document.getElementById('transparent-bg').addEventListener('change', (e) => {
+    const lightColorInput = document.getElementById('light-color');
+    const lightHexInput = document.getElementById('light-hex');
+    if (e.target.checked) {
+        // Use white for "transparent" look
+        lightColorInput.value = '#FFFFFF';
+        lightHexInput.value = '#FFFFFF';
+        lightColorInput.disabled = true;
+        lightHexInput.disabled = true;
+        lightColorInput.style.opacity = '0.5';
+    } else {
+        lightColorInput.disabled = false;
+        lightHexInput.disabled = false;
+        lightColorInput.style.opacity = '1';
+    }
+});
         
         function setPreset(dark, light) {
             document.getElementById('dark-color').value = dark;
