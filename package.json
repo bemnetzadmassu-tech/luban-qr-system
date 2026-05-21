@@ -6,10 +6,10 @@
         "vercel-build": "npm install"
     },
     "dependencies": {
-        "bwip-js": "^4.10.1",
-        "cors": "^2.8.5",
         "express": "^4.18.2",
+        "cors": "^2.8.5",
         "qrcode": "^1.5.3",
-        "sqlite3": "^5.1.6"
+        "bwip-js": "^4.0.0",
+        "pg": "^8.11.3"
     }
 }

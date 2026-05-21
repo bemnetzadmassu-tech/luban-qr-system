@@ -1,128 +1,109 @@
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 
-const db = new sqlite3.Database('./luban_codes.db');
-
-db.serialize(() => {
-    // Main table - ONE ID for BOTH QR and Barcode!
-    db.run(`
-        CREATE TABLE IF NOT EXISTS codes (
-            id TEXT PRIMARY KEY,
-            product_name TEXT,
-            product_type TEXT,
-            price DECIMAL(10,2),
-            qr_destination TEXT,
-            qr_scan_count INTEGER DEFAULT 0,
-            barcode_scan_count INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_qr_scanned DATETIME,
-            last_barcode_scanned DATETIME
-        )
-    `);
-    
-    db.run(`
-        CREATE TABLE IF NOT EXISTS scan_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            code TEXT NOT NULL,
-            scan_type TEXT CHECK(scan_type IN ('qr', 'barcode')),
-            scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            ip_address TEXT,
-            user_agent TEXT
-        )
-    `);
-    
-    console.log('✅ Database initialized');
+const pool = new Pool({
+    connectionString: process.env.POSTGRES_URL,
 });
 
+// Initialize tables
+async function initDB() {
+    try {
+        // Main table - ONE ID for BOTH QR and Barcode!
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS codes (
+                id TEXT PRIMARY KEY,
+                product_name TEXT,
+                product_type TEXT,
+                price DECIMAL(10,2),
+                qr_destination TEXT,
+                qr_scan_count INTEGER DEFAULT 0,
+                barcode_scan_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_qr_scanned TIMESTAMP,
+                last_barcode_scanned TIMESTAMP
+            )
+        `);
+        
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS scan_logs (
+                id SERIAL PRIMARY KEY,
+                code TEXT NOT NULL,
+                scan_type TEXT CHECK(scan_type IN ('qr', 'barcode')),
+                scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ip_address TEXT,
+                user_agent TEXT
+            )
+        `);
+        
+        console.log('✅ PostgreSQL Database initialized');
+    } catch (error) {
+        console.error('DB init error:', error);
+    }
+}
+
+initDB();
+
 const dbHelpers = {
-    createCode: (id, productName, productType, price, qrDestination) => {
-        return new Promise((resolve, reject) => {
-            db.run(
-                `INSERT INTO codes (id, product_name, product_type, price, qr_destination) VALUES (?, ?, ?, ?, ?)`,
-                [id, productName, productType, price, qrDestination],
-                (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
+    createCode: async (id, productName, productType, price, qrDestination) => {
+        await pool.query(
+            `INSERT INTO codes (id, product_name, product_type, price, qr_destination) 
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (id) DO NOTHING`,
+            [id, productName, productType, price, qrDestination]
+        );
     },
     
-    getCode: (id) => {
-        return new Promise((resolve, reject) => {
-            db.get(`SELECT * FROM codes WHERE id = ?`, [id], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
-        });
+    getCode: async (id) => {
+        const result = await pool.query(`SELECT * FROM codes WHERE id = $1`, [id]);
+        return result.rows[0];
     },
     
-    getAllCodes: () => {
-        return new Promise((resolve, reject) => {
-            db.all(`SELECT * FROM codes ORDER BY created_at DESC`, (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-            });
-        });
+    getAllCodes: async () => {
+        const result = await pool.query(`SELECT * FROM codes ORDER BY created_at DESC`);
+        return result.rows;
     },
     
-    updateQRDestination: (id, destination) => {
-        return new Promise((resolve, reject) => {
-            db.run(
-                `UPDATE codes SET qr_destination = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-                [destination, id],
-                (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                }
-            );
-        });
+    updateQRDestination: async (id, destination) => {
+        await pool.query(
+            `UPDATE codes SET qr_destination = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+            [destination, id]
+        );
     },
     
-    incrementQRScan: (id) => {
-        db.run(
-            `UPDATE codes SET qr_scan_count = qr_scan_count + 1, last_qr_scanned = CURRENT_TIMESTAMP WHERE id = ?`,
+    incrementQRScan: async (id) => {
+        await pool.query(
+            `UPDATE codes SET qr_scan_count = qr_scan_count + 1, last_qr_scanned = CURRENT_TIMESTAMP WHERE id = $1`,
             [id]
         );
     },
     
-    incrementBarcodeScan: (id) => {
-        db.run(
-            `UPDATE codes SET barcode_scan_count = barcode_scan_count + 1, last_barcode_scanned = CURRENT_TIMESTAMP WHERE id = ?`,
+    incrementBarcodeScan: async (id) => {
+        await pool.query(
+            `UPDATE codes SET barcode_scan_count = barcode_scan_count + 1, last_barcode_scanned = CURRENT_TIMESTAMP WHERE id = $1`,
             [id]
         );
     },
     
-    logScan: (code, scanType, ip, userAgent) => {
-        db.run(
-            `INSERT INTO scan_logs (code, scan_type, ip_address, user_agent) VALUES (?, ?, ?, ?)`,
+    logScan: async (code, scanType, ip, userAgent) => {
+        await pool.query(
+            `INSERT INTO scan_logs (code, scan_type, ip_address, user_agent) VALUES ($1, $2, $3, $4)`,
             [code, scanType, ip, userAgent]
         );
     },
     
-    getStats: () => {
-        return new Promise((resolve, reject) => {
-            db.get(
-                `SELECT 
-                    COUNT(*) as total_codes,
-                    SUM(qr_scan_count) as total_qr_scans,
-                    SUM(barcode_scan_count) as total_barcode_scans
-                FROM codes`,
-                (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                }
-            );
-        });
+    getStats: async () => {
+        const result = await pool.query(`
+            SELECT 
+                COUNT(*) as total_codes,
+                COALESCE(SUM(qr_scan_count), 0) as total_qr_scans,
+                COALESCE(SUM(barcode_scan_count), 0) as total_barcode_scans
+            FROM codes
+        `);
+        return result.rows[0];
     },
     
-    deleteCode: (id) => {
-        return new Promise((resolve, reject) => {
-            db.run(`DELETE FROM codes WHERE id = ?`, [id], (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
+    deleteCode: async (id) => {
+        await pool.query(`DELETE FROM codes WHERE id = $1`, [id]);
     }
 };
 

@@ -2,64 +2,96 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const QRCode = require('qrcode');
-const sqlite3 = require('sqlite3').verbose();
+const bwipjs = require('bwip-js');
+const { Pool } = require('pg');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Database setup
-const dbPath = process.env.VERCEL ? '/tmp/luban_codes.db' : './luban_codes.db';
-const db = new sqlite3.Database(dbPath);
-
-// Create table if not exists
-db.serialize(() => {
-    db.run(`
-        CREATE TABLE IF NOT EXISTS qr_codes (
-            id TEXT PRIMARY KEY,
-            destination_url TEXT,
-            scan_count INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
-    console.log('✅ Database initialized at:', dbPath);
+// ============================================
+// DATABASE CONNECTION (Neon Postgres)
+// ============================================
+const pool = new Pool({
+    connectionString: process.env.POSTGRES_URL,
 });
 
-// Health check
+// Initialize database tables
+async function initDB() {
+    try {
+        // Main table - ONE ID for BOTH QR and Barcode!
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS codes (
+                id TEXT PRIMARY KEY,
+                product_name TEXT,
+                product_type TEXT,
+                price DECIMAL(10,2),
+                qr_destination TEXT,
+                qr_scan_count INTEGER DEFAULT 0,
+                barcode_scan_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_qr_scanned TIMESTAMP,
+                last_barcode_scanned TIMESTAMP
+            )
+        `);
+        
+        // Scan logs table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS scan_logs (
+                id SERIAL PRIMARY KEY,
+                code TEXT NOT NULL,
+                scan_type TEXT CHECK(scan_type IN ('qr', 'barcode')),
+                scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ip_address TEXT,
+                user_agent TEXT
+            )
+        `);
+        
+        console.log('✅ PostgreSQL database initialized');
+    } catch (error) {
+        console.error('DB init error:', error);
+    }
+}
+
+initDB();
+
+// ============================================
+// HEALTH CHECK
+// ============================================
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// CREATE QR code in database (called before generation)
-app.post('/api/qr/create', (req, res) => {
+// ============================================
+// CREATE QR CODE (Save to Database)
+// ============================================
+app.post('/api/qr/create', async (req, res) => {
     const { id } = req.body;
-    
-    console.log('📝 Creating QR code:', id);
     
     if (!id) {
         return res.status(400).json({ error: 'ID is required' });
     }
     
-    db.run(
-        'INSERT OR IGNORE INTO qr_codes (id) VALUES (?)',
-        [id],
-        function(err) {
-            if (err) {
-                console.error('DB error:', err);
-                return res.status(500).json({ error: err.message });
-            }
-            console.log('✅ QR code saved:', id);
-            res.json({ success: true, id: id });
-        }
-    );
+    try {
+        await pool.query(
+            `INSERT INTO codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING`,
+            [id]
+        );
+        console.log(`✅ QR code created: ${id}`);
+        res.json({ success: true, id: id });
+    } catch (error) {
+        console.error('Create error:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
-// Generate QR Code image
+// ============================================
+// GENERATE QR CODE IMAGE
+// ============================================
 app.post('/api/qr/generate', async (req, res) => {
     try {
         const { content, darkColor = '#4A2C1A', lightColor = '#F5E6D3' } = req.body;
-        
-        console.log('🎨 Generating QR for:', content);
         
         if (!content) {
             return res.status(400).json({ error: 'Content is required' });
@@ -87,88 +119,111 @@ app.post('/api/qr/generate', async (req, res) => {
     }
 });
 
-// List all QR codes
-app.get('/api/qr/list', (req, res) => {
-    db.all('SELECT * FROM qr_codes ORDER BY created_at DESC', (err, rows) => {
-        if (err) {
-            console.error('List error:', err);
-            return res.json({ success: true, codes: [] });
-        }
-        console.log('📋 Listing codes, count:', rows?.length || 0);
-        res.json({ success: true, codes: rows || [] });
-    });
-});
-
-// Update destination
-app.put('/api/qr/update/:id', (req, res) => {
-    const { id } = req.params;
-    const { destinationUrl } = req.body;
-    
-    console.log('✏️ Updating:', id, '→', destinationUrl);
-    
-    db.run(
-        'UPDATE qr_codes SET destination_url = ? WHERE id = ?',
-        [destinationUrl, id],
-        function(err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ success: true, message: `Updated ${id} → ${destinationUrl}` });
-        }
-    );
-});
-
-// Delete QR code
-app.delete('/api/qr/delete/:id', (req, res) => {
-    const { id } = req.params;
-    
-    db.run('DELETE FROM qr_codes WHERE id = ?', [id], function(err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ success: true, message: `Deleted ${id}` });
-    });
-});
-
-// Redirect endpoint
-app.get('/api/r/:id', (req, res) => {
-    const { id } = req.params;
-    
-    db.get('SELECT destination_url FROM qr_codes WHERE id = ?', [id], (err, row) => {
-        if (err || !row || !row.destination_url) {
-            return res.status(404).send(`Code "${id}" not found or not configured`);
-        }
-        
-        db.run('UPDATE qr_codes SET scan_count = scan_count + 1 WHERE id = ?', [id]);
-        
-        console.log(`📱 Redirecting ${id} → ${row.destination_url}`);
-        res.redirect(row.destination_url);
-    });
-});
-
-// Serve static files
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Catch-all for frontend
-app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, '../public/index.html'));
+// ============================================
+// LIST ALL QR CODES
+// ============================================
+app.get('/api/qr/list', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT id, qr_destination as destination_url, qr_scan_count as scan_count, created_at 
+            FROM codes 
+            ORDER BY created_at DESC
+        `);
+        res.json({ success: true, codes: result.rows });
+    } catch (error) {
+        console.error('List error:', error);
+        res.json({ success: true, codes: [] });
     }
 });
 
-module.exports = app;
+// ============================================
+// UPDATE QR DESTINATION
+// ============================================
+app.put('/api/qr/update/:id', async (req, res) => {
+    const { id } = req.params;
+    const { destinationUrl } = req.body;
+    
+    try {
+        await pool.query(
+            `UPDATE codes SET qr_destination = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+            [destinationUrl, id]
+        );
+        console.log(`✏️ Updated ${id} → ${destinationUrl}`);
+        res.json({ success: true, message: `Updated ${id} → ${destinationUrl}` });
+    } catch (error) {
+        console.error('Update error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
-// Generate BARCODE with same ID
+// ============================================
+// DELETE QR CODE
+// ============================================
+app.delete('/api/qr/delete/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        await pool.query(`DELETE FROM codes WHERE id = $1`, [id]);
+        console.log(`🗑️ Deleted ${id}`);
+        res.json({ success: true, message: `Deleted ${id}` });
+    } catch (error) {
+        console.error('Delete error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// REDIRECT ENDPOINT (For QR Code Scanning)
+// ============================================
+app.get('/api/r/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const result = await pool.query(
+            `SELECT qr_destination FROM codes WHERE id = $1`,
+            [id]
+        );
+        
+        if (!result.rows[0] || !result.rows[0].qr_destination) {
+            return res.status(404).send(`
+                <!DOCTYPE html>
+                <html>
+                <head><title>QR Code Not Found</title></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1>❌ Code Not Found</h1>
+                    <p>The code "${id}" has not been configured yet.</p>
+                </body>
+                </html>
+            `);
+        }
+        
+        // Increment scan count
+        await pool.query(
+            `UPDATE codes SET qr_scan_count = qr_scan_count + 1, last_qr_scanned = CURRENT_TIMESTAMP WHERE id = $1`,
+            [id]
+        );
+        
+        console.log(`📱 QR SCAN: ${id} → ${result.rows[0].qr_destination}`);
+        
+        res.redirect(result.rows[0].qr_destination);
+        
+    } catch (error) {
+        console.error('Redirect error:', error);
+        res.status(500).send('Server error');
+    }
+});
+
+// ============================================
+// GENERATE SINGLE BARCODE
+// ============================================
 app.post('/api/barcode/generate', async (req, res) => {
     try {
-        const bwipjs = require('bwip-js');
         const { id, barcodeType = 'code128', barColor = '#000000' } = req.body;
         
         if (!id) {
             return res.status(400).json({ error: 'ID is required' });
         }
         
-        // Generate barcode image
         const barcodeBuffer = await new Promise((resolve, reject) => {
             bwipjs.toBuffer({
                 bcid: barcodeType,
@@ -186,21 +241,17 @@ app.post('/api/barcode/generate', async (req, res) => {
         
         const barcodeBase64 = barcodeBuffer.toString('base64');
         
-        // Also save to database (same table, different type)
-        db.run(
-            'INSERT OR IGNORE INTO qr_codes (id) VALUES (?)',
-            [id],
-            (err) => {
-                if (err) console.error('DB insert error:', err);
-            }
+        // Also save to database if not exists
+        await pool.query(
+            `INSERT INTO codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING`,
+            [id]
         );
         
         res.json({
             success: true,
             image: `data:image/png;base64,${barcodeBase64}`,
             id: id,
-            value: id,
-            type: barcodeType
+            value: id
         });
         
     } catch (error) {
@@ -209,10 +260,11 @@ app.post('/api/barcode/generate', async (req, res) => {
     }
 });
 
-// Batch generate barcodes
+// ============================================
+// BATCH BARCODE GENERATION
+// ============================================
 app.post('/api/barcode/batch', async (req, res) => {
     try {
-        const bwipjs = require('bwip-js');
         const { prefix, startNumber, endNumber, barcodeType = 'code128', barColor = '#000000' } = req.body;
         
         if (!prefix || !startNumber || !endNumber) {
@@ -249,13 +301,18 @@ app.post('/api/barcode/batch', async (req, res) => {
             const barcodeBase64 = barcodeBuffer.toString('base64');
             
             // Save to database
-            db.run('INSERT OR IGNORE INTO qr_codes (id) VALUES (?)', [id]);
+            await pool.query(
+                `INSERT INTO codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING`,
+                [id]
+            );
             
             results.push({
                 id: id,
                 image: `data:image/png;base64,${barcodeBase64}`
             });
         }
+        
+        console.log(`📦 Generated ${results.length} barcodes`);
         
         res.json({
             success: true,
@@ -264,7 +321,21 @@ app.post('/api/barcode/batch', async (req, res) => {
         });
         
     } catch (error) {
-        console.error('Batch barcode error:', error);
+        console.error('Batch error:', error);
         res.status(500).json({ error: error.message });
     }
 });
+
+// ============================================
+// SERVE STATIC FILES
+// ============================================
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Catch-all for frontend
+app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+        res.sendFile(path.join(__dirname, '../public/index.html'));
+    }
+});
+
+module.exports = app;
