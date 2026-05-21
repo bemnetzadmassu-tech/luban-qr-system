@@ -28,7 +28,7 @@ async function initDB() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ Neon Postgres connected - Data will persist forever!');
+        console.log('✅ Neon Postgres connected');
     } catch (error) {
         console.error('DB error:', error.message);
     }
@@ -41,7 +41,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // ============================================
-// CREATE QR CODE (SAVES TO NEON)
+// CREATE QR CODE
 // ============================================
 app.post('/api/qr/create', async (req, res) => {
     const { id } = req.body;
@@ -52,7 +52,7 @@ app.post('/api/qr/create', async (req, res) => {
             'INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING',
             [id]
         );
-        console.log(`✅ QR code saved to Neon: ${id}`);
+        console.log(`✅ QR code saved: ${id}`);
         res.json({ success: true, id: id });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -86,27 +86,9 @@ app.post('/api/qr/generate', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-// In api/index.js - Add this to the redirect endpoint
-app.get('/api/r/:id', async (req, res) => {
-    const { id } = req.params;
-    
-    // Check if this is a product QR code (COF prefix)
-    if (id.startsWith('COF') || id.startsWith('YIRG') || id.startsWith('SIDM') || id.startsWith('GUJI')) {
-        // Redirect to product landing page (not payment directly)
-        const landingUrl = `/product.html?id=${id}`;
-        return res.redirect(landingUrl);
-    }
-    
-    // For other QR codes (TEST001, etc.), use normal redirect
-    const qrData = await db.getQRCode(id);
-    if (qrData?.destination_url) {
-        res.redirect(qrData.destination_url);
-    } else {
-        res.status(404).send('QR code not found');
-    }
-});
+
 // ============================================
-// LIST ALL QR CODES (FROM NEON - PERMANENT)
+// LIST ALL QR CODES
 // ============================================
 app.get('/api/qr/list', async (req, res) => {
     try {
@@ -115,16 +97,14 @@ app.get('/api/qr/list', async (req, res) => {
             FROM qr_codes 
             ORDER BY created_at DESC
         `);
-        console.log(`📋 Retrieved ${result.rows.length} QR codes from Neon`);
         res.json({ success: true, codes: result.rows });
     } catch (error) {
-        console.error('List error:', error);
         res.json({ success: true, codes: [] });
     }
 });
 
 // ============================================
-// UPDATE DESTINATION
+// UPDATE DESTINATION (Regular Redirect)
 // ============================================
 app.put('/api/qr/update/:id', async (req, res) => {
     const { id } = req.params;
@@ -136,7 +116,7 @@ app.put('/api/qr/update/:id', async (req, res) => {
             [destinationUrl, id]
         );
         console.log(`✏️ Updated ${id} → ${destinationUrl}`);
-        res.json({ success: true, message: `Updated ${id}` });
+        res.json({ success: true, message: `Updated ${id} → ${destinationUrl}` });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -149,7 +129,6 @@ app.delete('/api/qr/delete/:id', async (req, res) => {
     const { id } = req.params;
     try {
         await pool.query('DELETE FROM qr_codes WHERE id = $1', [id]);
-        console.log(`🗑️ Deleted ${id}`);
         res.json({ success: true, message: `Deleted ${id}` });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -157,36 +136,98 @@ app.delete('/api/qr/delete/:id', async (req, res) => {
 });
 
 // ============================================
-// REDIRECT ENDPOINT
+// UPDATE PRODUCT PAGE
+// ============================================
+app.put('/api/qr/update-product/:id', async (req, res) => {
+    const { id } = req.params;
+    const { productName, productPrice, productDescription } = req.body;
+    
+    try {
+        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_name TEXT`);
+        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_price DECIMAL(10,2)`);
+        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_description TEXT`);
+        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS page_type TEXT DEFAULT 'redirect'`);
+        
+        await pool.query(`
+            UPDATE qr_codes 
+            SET page_type = 'product', 
+                product_name = $1, 
+                product_price = $2, 
+                product_description = $3,
+                destination_url = NULL
+            WHERE id = $4
+        `, [productName, productPrice, productDescription, id]);
+        
+        res.json({ success: true, message: `Product page updated for ${id}` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// GET PRODUCT INFO
+// ============================================
+app.get('/api/qr/product/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        const result = await pool.query(`
+            SELECT product_name, product_price, product_description, page_type
+            FROM qr_codes WHERE id = $1
+        `, [id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        
+        res.json({ success: true, product: result.rows[0] });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================
+// MAIN REDIRECT ENDPOINT (ONLY ONE!)
+// Handles BOTH regular redirects AND product pages
 // ============================================
 app.get('/api/r/:id', async (req, res) => {
     const { id } = req.params;
+    
     try {
-        const result = await pool.query(
-            'SELECT destination_url FROM qr_codes WHERE id = $1',
-            [id]
-        );
+        // Ensure columns exist
+        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS page_type TEXT DEFAULT 'redirect'`);
+        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_name TEXT`);
+        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_price DECIMAL(10,2)`);
+        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_description TEXT`);
         
-        if (!result.rows[0]?.destination_url) {
-            return res.status(404).send(`
-                <!DOCTYPE html>
-                <html>
-                <head><title>QR Code Not Found</title></head>
-                <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1>❌ Code Not Found</h1>
-                    <p>The code "${id}" has not been configured yet.</p>
-                </body>
-                </html>
-            `);
+        const result = await pool.query(`
+            SELECT page_type, destination_url, product_name, product_price, product_description 
+            FROM qr_codes WHERE id = $1
+        `, [id]);
+        
+        if (result.rows.length === 0) {
+            return res.status(404).send(`Code "${id}" not found. Generate it first.`);
         }
         
-        await pool.query(
-            'UPDATE qr_codes SET scan_count = scan_count + 1 WHERE id = $1',
-            [id]
-        );
+        const qrData = result.rows[0];
         
-        console.log(`📱 QR SCAN: ${id} → ${result.rows[0].destination_url}`);
-        res.redirect(result.rows[0].destination_url);
+        // Increment scan count
+        await pool.query('UPDATE qr_codes SET scan_count = scan_count + 1 WHERE id = $1', [id]);
+        
+        // Check if it's a product page
+        if (qrData.page_type === 'product' && qrData.product_name) {
+            const productPage = `/product.html?id=${id}&name=${encodeURIComponent(qrData.product_name)}&price=${qrData.product_price}&desc=${encodeURIComponent(qrData.product_description || '')}`;
+            console.log(`📦 Product: ${id} → ${qrData.product_name}`);
+            return res.redirect(productPage);
+        }
+        
+        // Regular redirect to URL
+        if (!qrData.destination_url) {
+            return res.status(404).send(`Code "${id}" has no destination set.`);
+        }
+        
+        console.log(`📱 QR SCAN: ${id} → ${qrData.destination_url}`);
+        res.redirect(qrData.destination_url);
         
     } catch (error) {
         console.error('Redirect error:', error);
@@ -210,11 +251,7 @@ app.post('/api/barcode/generate', async (req, res) => {
             }, (err, png) => err ? reject(err) : resolve(png));
         });
         
-        // Also save to Neon
-        await pool.query(
-            'INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING',
-            [id]
-        );
+        await pool.query('INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [id]);
         
         res.json({
             success: true,
@@ -252,6 +289,7 @@ app.post('/api/barcode/batch', async (req, res) => {
 
 // Serve static files
 app.use(express.static(path.join(__dirname, '../public')));
+
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(__dirname, '../public/index.html'));
