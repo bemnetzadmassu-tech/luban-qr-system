@@ -78,16 +78,9 @@
         }
         .result.show { display: block; }
         .preview img { max-width: 200px; margin: 10px; }
+        .preview svg { max-width: 200px; margin: 10px; }
         .info-box {
             background: #e3f2fd;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        .warning-box {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
             padding: 15px;
             border-radius: 12px;
             margin-bottom: 20px;
@@ -101,17 +94,37 @@
             border-left: 4px solid #667eea;
         }
         .color-row { display: flex; gap: 10px; align-items: center; }
-        .qr-type-selector {
+        .qr-type-selector, .format-selector {
             display: flex;
             gap: 20px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
-        .qr-type-selector label {
+        .qr-type-selector label, .format-selector label {
             display: flex;
             align-items: center;
             gap: 8px;
             cursor: pointer;
             font-weight: normal;
+        }
+        .preset-colors {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .preset-btn {
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .preset-btn:hover { transform: scale(1.02); }
+        .gold-gradient {
+            background: linear-gradient(135deg, #F2D57E, #D4AF37, #8C6B1F);
+            color: #1a1a2e;
         }
         .batch-preview { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 20px; }
         .batch-item { text-align: center; }
@@ -151,6 +164,15 @@
                     </label>
                 </div>
                 
+                <div class="format-selector">
+                    <label>
+                        <input type="radio" name="qr-format" value="png" checked> PNG (Raster)
+                    </label>
+                    <label>
+                        <input type="radio" name="qr-format" value="svg"> SVG (Vector - Scalable)
+                    </label>
+                </div>
+                
                 <div class="form-group">
                     <label>QR Code ID (e.g., TEST001, YIRG001)</label>
                     <input type="text" id="qr-id" placeholder="TEST001">
@@ -163,27 +185,30 @@
                 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Dark Color</label>
+                        <label>QR Dark Color (Modules)</label>
                         <div class="color-row">
                             <input type="color" id="dark-color" value="#4A2C1A">
                             <input type="text" id="dark-hex" value="#4A2C1A" style="flex: 1;">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Light Color</label>
+                        <label>Background Color</label>
                         <div class="color-row">
                             <input type="color" id="light-color" value="#F5E6D3">
                             <input type="text" id="light-hex" value="#F5E6D3" style="flex: 1;">
+                            <label style="margin-left: 10px;">
+                                <input type="checkbox" id="transparent-bg"> Transparent
+                            </label>
                         </div>
                     </div>
                 </div>
                 
-                <div class="preset-colors" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-                    <button type="button" class="btn-secondary" onclick="setPreset('#4A2C1A', '#F5E6D3')">☕ Coffee Brown</button>
-                    <button type="button" class="btn-secondary" onclick="setPreset('#000000', '#FFFFFF')">⚫ Black & White</button>
-                    <button type="button" class="btn-secondary" onclick="setPreset('#8B4513', '#FFF8E7')">🌰 Yirgacheffe</button>
-                    <button type="button" class="btn-secondary" onclick="setPreset('#2E7D32', '#FFFFFF')">🌿 Sidama</button>
-                    <button type="button" class="btn-secondary" onclick="setPreset('#6A1B9A', '#FFFFFF')">🍇 Guji</button>
+                <div class="preset-colors">
+                    <button type="button" class="preset-btn gold-gradient" onclick="setGoldGradient()">✨ Gold Gradient (Left to Right)</button>
+                    <button type="button" class="preset-btn" style="background: #F2D57E; color: #333;" onclick="setPreset('#F2D57E', '#FFFFFF')">🌟 Light Gold</button>
+                    <button type="button" class="preset-btn" style="background: #D4AF37; color: #333;" onclick="setPreset('#D4AF37', '#FFFFFF')">🏆 Gold</button>
+                    <button type="button" class="preset-btn" style="background: #8C6B1F; color: white;" onclick="setPreset('#8C6B1F', '#FFFFFF')">🌰 Dark Gold</button>
+                    <button type="button" class="preset-btn" style="background: #000000; color: white;" onclick="setPreset('#000000', '#FFFFFF')">⚫ Black & White</button>
                 </div>
                 
                 <button onclick="generateQR()">🚀 Generate QR Code</button>
@@ -219,6 +244,13 @@
                         <input type="color" id="barcode-color" value="#000000">
                         <input type="text" id="barcode-hex" value="#000000" style="flex: 1;">
                     </div>
+                </div>
+                
+                <div class="preset-colors">
+                    <button type="button" style="background: #F2D57E; color: #333;" onclick="setBarcodeColor('#F2D57E')">🌟 Light Gold</button>
+                    <button type="button" style="background: #D4AF37; color: #333;" onclick="setBarcodeColor('#D4AF37')">🏆 Gold</button>
+                    <button type="button" style="background: #8C6B1F; color: white;" onclick="setBarcodeColor('#8C6B1F')">🌰 Dark Gold</button>
+                    <button type="button" style="background: #000000; color: white;" onclick="setBarcodeColor('#000000')">⚫ Black</button>
                 </div>
                 
                 <button onclick="generateBarcode()">📊 Generate Barcode</button>
@@ -257,6 +289,14 @@
                     </select>
                 </div>
                 
+                <div class="form-group">
+                    <label>Barcode Color</label>
+                    <div class="color-row">
+                        <input type="color" id="batch-barcode-color" value="#D4AF37">
+                        <input type="text" id="batch-barcode-hex" value="#D4AF37" style="flex: 1;">
+                    </div>
+                </div>
+                
                 <button onclick="generateBatchBarcodes()">📦 Generate Batch Barcodes</button>
                 <div id="batch-result" class="result"></div>
             </div>
@@ -291,12 +331,45 @@
         document.getElementById('barcode-color').addEventListener('input', (e) => {
             document.getElementById('barcode-hex').value = e.target.value;
         });
+        document.getElementById('batch-barcode-color').addEventListener('input', (e) => {
+            document.getElementById('batch-barcode-hex').value = e.target.value;
+        });
+        
+        // Transparent background checkbox
+        document.getElementById('transparent-bg').addEventListener('change', (e) => {
+            const lightColorInput = document.getElementById('light-color');
+            const lightHexInput = document.getElementById('light-hex');
+            if (e.target.checked) {
+                lightColorInput.disabled = true;
+                lightHexInput.disabled = true;
+                lightColorInput.style.opacity = '0.5';
+            } else {
+                lightColorInput.disabled = false;
+                lightHexInput.disabled = false;
+                lightColorInput.style.opacity = '1';
+            }
+        });
         
         function setPreset(dark, light) {
             document.getElementById('dark-color').value = dark;
             document.getElementById('dark-hex').value = dark;
             document.getElementById('light-color').value = light;
             document.getElementById('light-hex').value = light;
+            document.getElementById('transparent-bg').checked = false;
+            document.getElementById('light-color').disabled = false;
+        }
+        
+        function setBarcodeColor(color) {
+            document.getElementById('barcode-color').value = color;
+            document.getElementById('barcode-hex').value = color;
+            document.getElementById('batch-barcode-color').value = color;
+            document.getElementById('batch-barcode-hex').value = color;
+        }
+        
+        function setGoldGradient() {
+            // For QR, we use the dark color only. Gold gradient effect achieved with middle tone
+            setPreset('#D4AF37', '#FFFFFF');
+            document.getElementById('transparent-bg').checked = true;
         }
         
         // ==================== QR TYPE SELECTOR ====================
@@ -345,8 +418,14 @@
         async function generateQR() {
             const id = document.getElementById('qr-id').value;
             const darkColor = document.getElementById('dark-color').value;
-            const lightColor = document.getElementById('light-color').value;
+            let lightColor = document.getElementById('light-color').value;
             const qrType = document.querySelector('input[name="qr-type"]:checked').value;
+            const format = document.querySelector('input[name="qr-format"]:checked').value;
+            const transparent = document.getElementById('transparent-bg').checked;
+            
+            if (transparent) {
+                lightColor = 'transparent';
+            }
             
             if (!id) {
                 alert('Please enter a QR Code ID');
@@ -378,7 +457,8 @@
                     body: JSON.stringify({
                         content: content,
                         darkColor: darkColor,
-                        lightColor: lightColor
+                        lightColor: lightColor,
+                        format: format
                     })
                 });
                 
@@ -389,14 +469,25 @@
                     ? '✅ This QR code contains the FULL URL. It will auto-open when scanned with any phone camera!'
                     : '✅ This QR code contains ONLY the ID. When scanned, customers will need to tap the notification.';
                 
+                let downloadButton = '';
+                if (format === 'svg') {
+                    downloadButton = `<button onclick="downloadSVG('${data.svgContent}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download SVG</button>`;
+                } else {
+                    downloadButton = `<button onclick="downloadQR('${data.image}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download PNG</button>`;
+                }
+                
+                const previewHtml = format === 'svg' 
+                    ? `<div class="preview">${data.svgContent}</div>`
+                    : `<div class="preview"><img src="${data.image}" alt="QR Code"></div>`;
+                
                 document.getElementById('qr-result').innerHTML = `
-                    <div class="preview"><img src="${data.image}" alt="QR Code"></div>
+                    ${previewHtml}
                     <p><strong>QR Contains:</strong> <code>${data.content}</code></p>
                     <div class="info-box" style="background: #d4edda;">
                         ${message}<br>
                         You can change where it redirects in the Manage tab - NO REPRINT NEEDED!
                     </div>
-                    <button onclick="downloadQR('${data.image}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download QR Code</button>
+                    ${downloadButton}
                 `;
                 document.getElementById('qr-result').classList.add('show');
                 loadQRCodes();
@@ -414,6 +505,16 @@
             link.download = `${filename}.png`;
             link.href = imageData;
             link.click();
+        }
+        
+        function downloadSVG(svgContent, filename) {
+            const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `${filename}.svg`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
         }
         
         // ==================== GENERATE BARCODE ====================
@@ -475,7 +576,7 @@
             const start = parseInt(document.getElementById('batch-start').value);
             const end = parseInt(document.getElementById('batch-end').value);
             const type = document.getElementById('batch-barcode-type').value;
-            const color = document.getElementById('barcode-color').value;
+            const color = document.getElementById('batch-barcode-color').value;
             
             if (!prefix || start >= end) {
                 alert('Enter valid prefix and range');
