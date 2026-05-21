@@ -10,14 +10,14 @@ app.use(cors());
 app.use(express.json());
 
 // ============================================
-// NEON POSTGRES (Using POSTGRES_URL from Vercel)
+// NEON POSTGRES - PERMANENT STORAGE
 // ============================================
 const pool = new Pool({
     connectionString: process.env.POSTGRES_URL,
     ssl: { rejectUnauthorized: false }
 });
 
-// Initialize tables
+// Create table if not exists
 async function initDB() {
     try {
         await pool.query(`
@@ -28,7 +28,7 @@ async function initDB() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('✅ Neon Postgres connected');
+        console.log('✅ Neon Postgres connected - Data will persist forever!');
     } catch (error) {
         console.error('DB error:', error.message);
     }
@@ -40,20 +40,28 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Create QR code
+// ============================================
+// CREATE QR CODE (SAVES TO NEON)
+// ============================================
 app.post('/api/qr/create', async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ error: 'ID is required' });
     
     try {
-        await pool.query('INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [id]);
+        await pool.query(
+            'INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING',
+            [id]
+        );
+        console.log(`✅ QR code saved to Neon: ${id}`);
         res.json({ success: true, id: id });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Generate QR code image
+// ============================================
+// GENERATE QR CODE IMAGE
+// ============================================
 app.post('/api/qr/generate', async (req, res) => {
     try {
         const { content, darkColor = '#D4AF37', lightColor = '#FFFFFF', format = 'png' } = req.body;
@@ -79,55 +87,98 @@ app.post('/api/qr/generate', async (req, res) => {
     }
 });
 
-// List all QR codes (FROM NEON)
+// ============================================
+// LIST ALL QR CODES (FROM NEON - PERMANENT)
+// ============================================
 app.get('/api/qr/list', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, destination_url, scan_count, created_at FROM qr_codes ORDER BY created_at DESC');
+        const result = await pool.query(`
+            SELECT id, destination_url, scan_count, created_at 
+            FROM qr_codes 
+            ORDER BY created_at DESC
+        `);
+        console.log(`📋 Retrieved ${result.rows.length} QR codes from Neon`);
         res.json({ success: true, codes: result.rows });
     } catch (error) {
+        console.error('List error:', error);
         res.json({ success: true, codes: [] });
     }
 });
 
-// Update destination
+// ============================================
+// UPDATE DESTINATION
+// ============================================
 app.put('/api/qr/update/:id', async (req, res) => {
     const { id } = req.params;
     const { destinationUrl } = req.body;
+    
     try {
-        await pool.query('UPDATE qr_codes SET destination_url = $1 WHERE id = $2', [destinationUrl, id]);
+        await pool.query(
+            'UPDATE qr_codes SET destination_url = $1 WHERE id = $2',
+            [destinationUrl, id]
+        );
+        console.log(`✏️ Updated ${id} → ${destinationUrl}`);
         res.json({ success: true, message: `Updated ${id}` });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Delete QR code
+// ============================================
+// DELETE QR CODE
+// ============================================
 app.delete('/api/qr/delete/:id', async (req, res) => {
     const { id } = req.params;
     try {
         await pool.query('DELETE FROM qr_codes WHERE id = $1', [id]);
+        console.log(`🗑️ Deleted ${id}`);
         res.json({ success: true, message: `Deleted ${id}` });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Redirect endpoint
+// ============================================
+// REDIRECT ENDPOINT
+// ============================================
 app.get('/api/r/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await pool.query('SELECT destination_url FROM qr_codes WHERE id = $1', [id]);
+        const result = await pool.query(
+            'SELECT destination_url FROM qr_codes WHERE id = $1',
+            [id]
+        );
+        
         if (!result.rows[0]?.destination_url) {
-            return res.status(404).send(`Code "${id}" not found`);
+            return res.status(404).send(`
+                <!DOCTYPE html>
+                <html>
+                <head><title>QR Code Not Found</title></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h1>❌ Code Not Found</h1>
+                    <p>The code "${id}" has not been configured yet.</p>
+                </body>
+                </html>
+            `);
         }
-        await pool.query('UPDATE qr_codes SET scan_count = scan_count + 1 WHERE id = $1', [id]);
+        
+        await pool.query(
+            'UPDATE qr_codes SET scan_count = scan_count + 1 WHERE id = $1',
+            [id]
+        );
+        
+        console.log(`📱 QR SCAN: ${id} → ${result.rows[0].destination_url}`);
         res.redirect(result.rows[0].destination_url);
+        
     } catch (error) {
+        console.error('Redirect error:', error);
         res.status(500).send('Server error');
     }
 });
 
-// Barcode endpoints
+// ============================================
+// BARCODE ENDPOINTS
+// ============================================
 app.post('/api/barcode/generate', async (req, res) => {
     try {
         const { id, barcodeType = 'code128', barColor = '#D4AF37' } = req.body;
@@ -141,8 +192,18 @@ app.post('/api/barcode/generate', async (req, res) => {
             }, (err, png) => err ? reject(err) : resolve(png));
         });
         
-        await pool.query('INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [id]);
-        res.json({ success: true, image: `data:image/png;base64,${barcodeBuffer.toString('base64')}`, id: id, value: id });
+        // Also save to Neon
+        await pool.query(
+            'INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING',
+            [id]
+        );
+        
+        res.json({
+            success: true,
+            image: `data:image/png;base64,${barcodeBuffer.toString('base64')}`,
+            id: id,
+            value: id
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
