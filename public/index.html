@@ -6,126 +6,35 @@
     <title>Luban Coffee - Dynamic QR + Barcode System</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 40px 20px; }
         .container { max-width: 800px; margin: 0 auto; }
-        .card {
-            background: white;
-            border-radius: 24px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
+        .card { background: white; border-radius: 24px; padding: 30px; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
         h1 { text-align: center; color: white; margin-bottom: 20px; }
         h2 { color: #333; margin-bottom: 20px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
         input, select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 10px;
-            flex-wrap: wrap;
-        }
-        .tab-btn {
-            background: none;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-size: 16px;
-            color: #666;
-            border-radius: 30px;
-            transition: all 0.3s;
-        }
-        .tab-btn.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-btn { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; color: #666; border-radius: 30px; transition: all 0.3s; }
+        .tab-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 14px 30px;
-            border-radius: 30px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-        }
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-            width: auto;
-            padding: 8px 20px;
-            margin: 5px;
-        }
-        .result {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 16px;
-            text-align: center;
-            display: none;
-        }
+        button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 14px 30px; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; }
+        .btn-secondary { background: #f0f0f0; color: #333; width: auto; padding: 8px 20px; margin: 5px; }
+        .result { margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 16px; text-align: center; display: none; }
         .result.show { display: block; }
         .preview img { max-width: 200px; margin: 10px; }
         .preview svg { max-width: 200px; margin: 10px; }
-        .info-box {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        .code-item {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-left: 4px solid #667eea;
-        }
+        .info-box { background: #e3f2fd; padding: 15px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; }
+        .code-item { background: #f8f9fa; border-radius: 10px; padding: 15px; margin-bottom: 10px; border-left: 4px solid #667eea; }
         .color-row { display: flex; gap: 10px; align-items: center; }
-        .qr-type-selector, .format-selector {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .qr-type-selector label, .format-selector label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            font-weight: normal;
-        }
-        .preset-colors {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .preset-btn {
-            padding: 10px 20px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: transform 0.2s;
-        }
+        .qr-type-selector, .format-selector { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+        .qr-type-selector label, .format-selector label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; }
+        .preset-colors { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .preset-btn { padding: 10px 20px; border-radius: 30px; cursor: pointer; font-size: 14px; font-weight: 600; transition: transform 0.2s; }
         .preset-btn:hover { transform: scale(1.02); }
-        .gold-gradient {
-            background: linear-gradient(135deg, #F2D57E, #D4AF37, #8C6B1F);
-            color: #1a1a2e;
-        }
+        .gold-gradient { background: linear-gradient(135deg, #F2D57E, #D4AF37, #8C6B1F); color: #1a1a2e; }
         .batch-preview { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 20px; }
         .batch-item { text-align: center; }
         .batch-item img { max-width: 150px; }
@@ -151,26 +60,18 @@
                 <button class="tab-btn" onclick="showTab('barcode-manage')">📋 Manage Barcodes</button>
             </div>
             
-            <!-- ==================== GENERATE QR TAB ==================== -->
+            <!-- Generate QR Tab -->
             <div id="generate-tab" class="tab-content active">
                 <h2>Generate QR Code</h2>
                 
                 <div class="qr-type-selector">
-                    <label>
-                        <input type="radio" name="qr-type" value="full" checked> Full URL (Auto-open on phone)
-                    </label>
-                    <label>
-                        <input type="radio" name="qr-type" value="id"> ID-Only (TEST001)
-                    </label>
+                    <label><input type="radio" name="qr-type" value="full" checked> Full URL (Auto-open on phone)</label>
+                    <label><input type="radio" name="qr-type" value="id"> ID-Only (TEST001)</label>
                 </div>
                 
                 <div class="format-selector">
-                    <label>
-                        <input type="radio" name="qr-format" value="png" checked> PNG (Raster)
-                    </label>
-                    <label>
-                        <input type="radio" name="qr-format" value="svg"> SVG (Vector - Scalable)
-                    </label>
+                    <label><input type="radio" name="qr-format" value="png" checked> PNG (Raster)</label>
+                    <label><input type="radio" name="qr-format" value="svg"> SVG (Vector - Scalable)</label>
                 </div>
                 
                 <div class="form-group">
@@ -187,24 +88,21 @@
                     <div class="form-group">
                         <label>QR Dark Color (Modules)</label>
                         <div class="color-row">
-                            <input type="color" id="dark-color" value="#4A2C1A">
-                            <input type="text" id="dark-hex" value="#4A2C1A" style="flex: 1;">
+                            <input type="color" id="dark-color" value="#D4AF37">
+                            <input type="text" id="dark-hex" value="#D4AF37" style="flex: 1;">
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Background Color</label>
                         <div class="color-row">
-                            <input type="color" id="light-color" value="#F5E6D3">
-                            <input type="text" id="light-hex" value="#F5E6D3" style="flex: 1;">
-                            <label style="margin-left: 10px;">
-                                <input type="checkbox" id="transparent-bg"> Transparent
-                            </label>
+                            <input type="color" id="light-color" value="#FFFFFF">
+                            <input type="text" id="light-hex" value="#FFFFFF" style="flex: 1;">
                         </div>
                     </div>
                 </div>
                 
                 <div class="preset-colors">
-                    <button type="button" class="preset-btn gold-gradient" onclick="setGoldGradient()">✨ Gold Gradient (Left to Right)</button>
+                    <button type="button" class="preset-btn gold-gradient" onclick="setGoldGradient()">✨ Gold Gradient</button>
                     <button type="button" class="preset-btn" style="background: #F2D57E; color: #333;" onclick="setPreset('#F2D57E', '#FFFFFF')">🌟 Light Gold</button>
                     <button type="button" class="preset-btn" style="background: #D4AF37; color: #333;" onclick="setPreset('#D4AF37', '#FFFFFF')">🏆 Gold</button>
                     <button type="button" class="preset-btn" style="background: #8C6B1F; color: white;" onclick="setPreset('#8C6B1F', '#FFFFFF')">🌰 Dark Gold</button>
@@ -215,34 +113,30 @@
                 <div id="qr-result" class="result"></div>
             </div>
             
-            <!-- ==================== BARCODE TAB ==================== -->
+            <!-- Barcode Tab -->
             <div id="barcode-tab" class="tab-content">
                 <h2>Generate Barcode (Same ID as QR)</h2>
-                <div class="info-box">
-                    📊 Barcode will contain the SAME ID as your QR code.<br>
-                    Perfect for POS and inventory tracking!
-                </div>
+                <div class="info-box">📊 Barcode will contain the SAME ID as your QR code.</div>
                 
                 <div class="form-group">
                     <label>ID (Same as QR Code ID)</label>
-                    <input type="text" id="barcode-id" placeholder="TEST001, COF001">
+                    <input type="text" id="barcode-id" placeholder="TEST001">
                 </div>
                 
                 <div class="form-group">
                     <label>Barcode Type</label>
                     <select id="barcode-type">
                         <option value="code128">Code 128 (Recommended)</option>
-                        <option value="ean13">EAN-13 (13 digits)</option>
-                        <option value="upca">UPC-A (12 digits)</option>
-                        <option value="code39">Code 39</option>
+                        <option value="ean13">EAN-13</option>
+                        <option value="upca">UPC-A</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
                     <label>Barcode Color</label>
                     <div class="color-row">
-                        <input type="color" id="barcode-color" value="#000000">
-                        <input type="text" id="barcode-hex" value="#000000" style="flex: 1;">
+                        <input type="color" id="barcode-color" value="#D4AF37">
+                        <input type="text" id="barcode-hex" value="#D4AF37" style="flex: 1;">
                     </div>
                 </div>
                 
@@ -257,13 +151,10 @@
                 <div id="barcode-result" class="result"></div>
             </div>
             
-            <!-- ==================== BATCH BARCODE TAB ==================== -->
+            <!-- Batch Barcode Tab -->
             <div id="batch-barcode-tab" class="tab-content">
                 <h2>Batch Barcode Generator</h2>
-                <div class="info-box">
-                    📦 Generate hundreds of barcodes at once with the same prefix.<br>
-                    Example: COF001, COF002, COF003...
-                </div>
+                <div class="info-box">📦 Generate hundreds of barcodes at once.</div>
                 
                 <div class="form-row">
                     <div class="form-group">
@@ -281,15 +172,6 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Barcode Type</label>
-                    <select id="batch-barcode-type">
-                        <option value="code128">Code 128</option>
-                        <option value="ean13">EAN-13</option>
-                        <option value="upca">UPC-A</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
                     <label>Barcode Color</label>
                     <div class="color-row">
                         <input type="color" id="batch-barcode-color" value="#D4AF37">
@@ -301,7 +183,7 @@
                 <div id="batch-result" class="result"></div>
             </div>
             
-            <!-- ==================== MANAGE QR TAB ==================== -->
+            <!-- Manage QR Tab -->
             <div id="manage-tab" class="tab-content">
                 <h2>Manage QR Codes</h2>
                 <p style="margin-bottom: 15px;">Change where your QR codes redirect - NO REPRINT NEEDED!</p>
@@ -309,9 +191,9 @@
                 <div id="codes-list" style="margin-top: 20px;">Loading...</div>
             </div>
             
-            <!-- ==================== MANAGE BARCODES TAB ==================== -->
+            <!-- Manage Barcodes Tab -->
             <div id="barcode-manage-tab" class="tab-content">
-                <h2>Manage Barcodes (Same IDs as QR)</h2>
+                <h2>Manage Barcodes</h2>
                 <button class="btn-secondary" onclick="loadBarcodes()">🔄 Refresh</button>
                 <div id="barcodes-list" style="margin-top: 20px;">Loading...</div>
             </div>
@@ -321,7 +203,7 @@
     <script>
         const baseUrl = window.location.origin;
         
-        // ==================== COLOR FUNCTIONS ====================
+        // Color sync
         document.getElementById('dark-color').addEventListener('input', (e) => {
             document.getElementById('dark-hex').value = e.target.value;
         });
@@ -335,31 +217,11 @@
             document.getElementById('batch-barcode-hex').value = e.target.value;
         });
         
-       // Replace the transparent checkbox logic with:
-document.getElementById('transparent-bg').addEventListener('change', (e) => {
-    const lightColorInput = document.getElementById('light-color');
-    const lightHexInput = document.getElementById('light-hex');
-    if (e.target.checked) {
-        // Use white for "transparent" look
-        lightColorInput.value = '#FFFFFF';
-        lightHexInput.value = '#FFFFFF';
-        lightColorInput.disabled = true;
-        lightHexInput.disabled = true;
-        lightColorInput.style.opacity = '0.5';
-    } else {
-        lightColorInput.disabled = false;
-        lightHexInput.disabled = false;
-        lightColorInput.style.opacity = '1';
-    }
-});
-        
         function setPreset(dark, light) {
             document.getElementById('dark-color').value = dark;
             document.getElementById('dark-hex').value = dark;
             document.getElementById('light-color').value = light;
             document.getElementById('light-hex').value = light;
-            document.getElementById('transparent-bg').checked = false;
-            document.getElementById('light-color').disabled = false;
         }
         
         function setBarcodeColor(color) {
@@ -370,84 +232,44 @@ document.getElementById('transparent-bg').addEventListener('change', (e) => {
         }
         
         function setGoldGradient() {
-            // For QR, we use the dark color only. Gold gradient effect achieved with middle tone
             setPreset('#D4AF37', '#FFFFFF');
-            document.getElementById('transparent-bg').checked = true;
         }
         
-        // ==================== QR TYPE SELECTOR ====================
-        const qrTypeRadios = document.querySelectorAll('input[name="qr-type"]');
-        const fullUrlPreview = document.getElementById('full-url-preview');
-        const fullUrlInput = document.getElementById('full-url');
+        // QR Type Selector
         const qrIdInput = document.getElementById('qr-id');
+        const fullUrlInput = document.getElementById('full-url');
         
         function updateFullUrlPreview() {
             const id = qrIdInput.value;
-            if (id) {
-                fullUrlInput.value = `${baseUrl}/api/r/${id}`;
-            } else {
-                fullUrlInput.value = '';
-            }
+            fullUrlInput.value = id ? `${baseUrl}/api/r/${id}` : '';
         }
-        
         qrIdInput.addEventListener('input', updateFullUrlPreview);
         
-        qrTypeRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (document.querySelector('input[name="qr-type"]:checked').value === 'full') {
-                    fullUrlPreview.style.display = 'block';
-                } else {
-                    fullUrlPreview.style.display = 'none';
-                }
-            });
-        });
-        
-        // ==================== TAB SWITCHING ====================
         function showTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`${tabName}-tab`).classList.add('active');
             event.target.classList.add('active');
-            
             if (tabName === 'manage') loadQRCodes();
             if (tabName === 'barcode-manage') loadBarcodes();
         }
         
-        // ==================== GENERATE QR ====================
         async function generateQR() {
             const id = document.getElementById('qr-id').value;
             const darkColor = document.getElementById('dark-color').value;
-            let lightColor = document.getElementById('light-color').value;
+            const lightColor = document.getElementById('light-color').value;
             const qrType = document.querySelector('input[name="qr-type"]:checked').value;
             const format = document.querySelector('input[name="qr-format"]:checked').value;
-            const transparent = document.getElementById('transparent-bg').checked;
             
-            if (transparent) {
-                lightColor = 'transparent';
-            }
+            if (!id) { alert('Enter a QR Code ID'); return; }
             
-            if (!id) {
-                alert('Please enter a QR Code ID');
-                return;
-            }
-            
-            let content;
-            if (qrType === 'full') {
-                content = `${baseUrl}/api/r/${id}`;
-            } else {
-                content = id;
-            }
+            let content = qrType === 'full' ? `${baseUrl}/api/r/${id}` : id;
             
             const btn = event.target;
             btn.disabled = true;
             btn.textContent = 'Generating...';
             
             try {
-                // Save to database
                 await fetch('/api/qr/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -457,26 +279,21 @@ document.getElementById('transparent-bg').addEventListener('change', (e) => {
                 const response = await fetch('/api/qr/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        content: content,
-                        darkColor: darkColor,
-                        lightColor: lightColor,
-                        format: format
-                    })
+                    body: JSON.stringify({ content, darkColor, lightColor, format })
                 });
                 
                 const data = await response.json();
                 if (data.error) throw new Error(data.error);
                 
                 const message = qrType === 'full' 
-                    ? '✅ This QR code contains the FULL URL. It will auto-open when scanned with any phone camera!'
-                    : '✅ This QR code contains ONLY the ID. When scanned, customers will need to tap the notification.';
+                    ? '✅ Full URL QR code - auto-opens on any phone camera!'
+                    : '✅ ID-Only QR code - customers will need to tap the notification.';
                 
-                let downloadButton = '';
+                let downloadBtn = '';
                 if (format === 'svg') {
-                    downloadButton = `<button onclick="downloadSVG('${data.svgContent}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download SVG</button>`;
+                    downloadBtn = `<button onclick="downloadSVG('${data.svgContent}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download SVG</button>`;
                 } else {
-                    downloadButton = `<button onclick="downloadQR('${data.image}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download PNG</button>`;
+                    downloadBtn = `<button onclick="downloadQR('${data.image}', '${id}')" style="margin-top: 10px; width: auto; padding: 8px 20px;">📥 Download PNG</button>`;
                 }
                 
                 const previewHtml = format === 'svg' 
@@ -486,21 +303,13 @@ document.getElementById('transparent-bg').addEventListener('change', (e) => {
                 document.getElementById('qr-result').innerHTML = `
                     ${previewHtml}
                     <p><strong>QR Contains:</strong> <code>${data.content}</code></p>
-                    <div class="info-box" style="background: #d4edda;">
-                        ${message}<br>
-                        You can change where it redirects in the Manage tab - NO REPRINT NEEDED!
-                    </div>
-                    ${downloadButton}
+                    <div class="info-box" style="background: #d4edda;">${message}<br>Change destination in Manage tab - NO REPRINT!</div>
+                    ${downloadBtn}
                 `;
                 document.getElementById('qr-result').classList.add('show');
                 loadQRCodes();
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '🚀 Generate QR Code';
-            }
+            } catch (error) { alert('Error: ' + error.message); }
+            finally { btn.disabled = false; btn.textContent = '🚀 Generate QR Code'; }
         }
         
         function downloadQR(imageData, filename) {
@@ -520,16 +329,11 @@ document.getElementById('transparent-bg').addEventListener('change', (e) => {
             URL.revokeObjectURL(url);
         }
         
-        // ==================== GENERATE BARCODE ====================
         async function generateBarcode() {
             const id = document.getElementById('barcode-id').value;
             const type = document.getElementById('barcode-type').value;
             const color = document.getElementById('barcode-color').value;
-            
-            if (!id) {
-                alert('Please enter an ID');
-                return;
-            }
+            if (!id) { alert('Enter ID'); return; }
             
             const btn = event.target;
             btn.disabled = true;
@@ -539,13 +343,8 @@ document.getElementById('transparent-bg').addEventListener('change', (e) => {
                 const response = await fetch('/api/barcode/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id: id,
-                        barcodeType: type,
-                        barColor: color
-                    })
+                    body: JSON.stringify({ id, barcodeType: type, barColor: color })
                 });
-                
                 const data = await response.json();
                 if (data.error) throw new Error(data.error);
                 
@@ -557,13 +356,8 @@ document.getElementById('transparent-bg').addEventListener('change', (e) => {
                 `;
                 document.getElementById('barcode-result').classList.add('show');
                 loadBarcodes();
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '📊 Generate Barcode';
-            }
+            } catch (error) { alert('Error: ' + error.message); }
+            finally { btn.disabled = false; btn.textContent = '📊 Generate Barcode'; }
         }
         
         function downloadBarcode(imageData, filename) {
@@ -573,21 +367,12 @@ document.getElementById('transparent-bg').addEventListener('change', (e) => {
             link.click();
         }
         
-        // ==================== GENERATE BATCH BARCODES ====================
         async function generateBatchBarcodes() {
             const prefix = document.getElementById('batch-prefix').value;
             const start = parseInt(document.getElementById('batch-start').value);
             const end = parseInt(document.getElementById('batch-end').value);
-            const type = document.getElementById('batch-barcode-type').value;
             const color = document.getElementById('batch-barcode-color').value;
-            
-            if (!prefix || start >= end) {
-                alert('Enter valid prefix and range');
-                return;
-            }
-            
-            const total = end - start + 1;
-            if (!confirm(`Generate ${total} barcodes? This may take a moment.`)) return;
+            if (!prefix || start >= end) { alert('Enter valid prefix and range'); return; }
             
             const btn = event.target;
             btn.disabled = true;
@@ -597,166 +382,90 @@ document.getElementById('transparent-bg').addEventListener('change', (e) => {
                 const response = await fetch('/api/barcode/batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prefix: prefix,
-                        startNumber: start,
-                        endNumber: end,
-                        barcodeType: type,
-                        barColor: color
-                    })
+                    body: JSON.stringify({ prefix, startNumber: start, endNumber: end, barColor: color })
                 });
-                
                 const data = await response.json();
                 if (data.error) throw new Error(data.error);
                 
                 let previewHtml = `<p>✅ Generated ${data.total} barcodes</p><div class="batch-preview">`;
                 for (let i = 0; i < Math.min(5, data.barcodes.length); i++) {
-                    previewHtml += `
-                        <div class="batch-item">
-                            <img src="${data.barcodes[i].image}" alt="Barcode">
-                            <div>${data.barcodes[i].id}</div>
-                        </div>
-                    `;
+                    previewHtml += `<div class="batch-item"><img src="${data.barcodes[i].image}" alt="Barcode"><div>${data.barcodes[i].id}</div></div>`;
                 }
-                previewHtml += `</div><p>📌 All barcodes saved with same IDs as QR codes!</p>`;
-                
+                previewHtml += `</div>`;
                 document.getElementById('batch-result').innerHTML = previewHtml;
                 document.getElementById('batch-result').classList.add('show');
                 loadBarcodes();
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = '📦 Generate Batch Barcodes';
-            }
+            } catch (error) { alert('Error: ' + error.message); }
+            finally { btn.disabled = false; btn.textContent = '📦 Generate Batch Barcodes'; }
         }
         
-        // ==================== LOAD QR CODES ====================
         async function loadQRCodes() {
             try {
                 const response = await fetch('/api/qr/list');
                 const data = await response.json();
-                
                 if (!data.codes || data.codes.length === 0) {
                     document.getElementById('codes-list').innerHTML = '<p>No QR codes yet. Generate some!</p>';
                     return;
                 }
-                
                 let html = '';
                 for (const code of data.codes) {
-                    const fullUrl = `${baseUrl}/api/r/${code.id}`;
-                    html += `
-                        <div class="code-item">
-                            <div><strong>📱 ${code.id}</strong></div>
-                            <div style="font-size: 12px;">🎯 Current destination: ${code.destination_url || 'Not set'}</div>
-                            <div style="font-size: 12px;">📊 Scans: ${code.scan_count || 0}</div>
-                            <div style="font-size: 11px; color: #666;">🔗 Redirect URL: ${fullUrl}</div>
-                            <div style="margin-top: 10px;">
-                                <input type="text" id="edit-${code.id}" placeholder="New destination URL (e.g., https://google.com)" style="padding: 6px; width: 250px;">
-                                <button class="btn-secondary" onclick="updateDestination('${code.id}')">✏️ Update Destination</button>
-                                <button class="btn-secondary" onclick="deleteQR('${code.id}')" style="background:#dc3545;color:white;">🗑️ Delete</button>
-                            </div>
-                        </div>
-                    `;
+                    html += `<div class="code-item">
+                        <div><strong>📱 ${code.id}</strong></div>
+                        <div>🎯 Destination: ${code.destination_url || 'Not set'}</div>
+                        <div>📊 Scans: ${code.scan_count || 0}</div>
+                        <div>🔗 Redirect: ${baseUrl}/api/r/${code.id}</div>
+                        <div><input type="text" id="edit-${code.id}" placeholder="New URL" style="padding: 6px; width: 200px;">
+                        <button onclick="updateDestination('${code.id}')">Update</button>
+                        <button onclick="deleteQR('${code.id}')" style="background:#dc3545;color:white;">Delete</button></div>
+                    </div>`;
                 }
                 document.getElementById('codes-list').innerHTML = html;
-                
-            } catch (error) {
-                document.getElementById('codes-list').innerHTML = '<p>Error loading codes</p>';
-            }
+            } catch (error) { document.getElementById('codes-list').innerHTML = '<p>Error loading codes</p>'; }
         }
         
         async function updateDestination(id) {
             const newUrl = document.getElementById(`edit-${id}`).value;
-            if (!newUrl) {
-                alert('Enter a destination URL');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/qr/update/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ destinationUrl: newUrl })
-                });
-                
-                const data = await response.json();
-                alert(data.message);
-                loadQRCodes();
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
+            if (!newUrl) { alert('Enter URL'); return; }
+            const response = await fetch(`/api/qr/update/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ destinationUrl: newUrl }) });
+            const data = await response.json();
+            alert(data.message);
+            loadQRCodes();
         }
         
         async function deleteQR(id) {
-            if (!confirm(`Delete QR code ${id}?`)) return;
-            
-            try {
-                const response = await fetch(`/api/qr/delete/${id}`, {
-                    method: 'DELETE'
-                });
-                
-                const data = await response.json();
-                alert(data.message);
-                loadQRCodes();
-                loadBarcodes();
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
+            if (!confirm(`Delete ${id}?`)) return;
+            await fetch(`/api/qr/delete/${id}`, { method: 'DELETE' });
+            loadQRCodes();
+            loadBarcodes();
         }
         
-        // ==================== LOAD BARCODES ====================
         async function loadBarcodes() {
             try {
                 const response = await fetch('/api/qr/list');
                 const data = await response.json();
-                
                 if (!data.codes || data.codes.length === 0) {
-                    document.getElementById('barcodes-list').innerHTML = '<p>No barcodes yet. Generate some!</p>';
+                    document.getElementById('barcodes-list').innerHTML = '<p>No barcodes yet</p>';
                     return;
                 }
-                
                 let html = '';
                 for (const code of data.codes) {
-                    html += `
-                        <div class="code-item">
-                            <div><strong>📊 ${code.id}</strong></div>
-                            <div style="font-size: 12px;">🔗 QR Redirect: ${code.destination_url || 'Not set'}</div>
-                            <div style="font-size: 12px;">📊 QR Scans: ${code.scan_count || 0}</div>
-                            <div style="margin-top: 10px;">
-                                <button class="btn-secondary" onclick="deleteBarcode('${code.id}')" style="background:#dc3545;color:white;">🗑️ Delete</button>
-                            </div>
-                        </div>
-                    `;
+                    html += `<div class="code-item">
+                        <div><strong>📊 ${code.id}</strong></div>
+                        <div>🔗 QR Redirect: ${code.destination_url || 'Not set'}</div>
+                        <div>📊 QR Scans: ${code.scan_count || 0}</div>
+                        <button onclick="deleteBarcode('${code.id}')" style="background:#dc3545;color:white;">Delete</button>
+                    </div>`;
                 }
                 document.getElementById('barcodes-list').innerHTML = html;
-                
-            } catch (error) {
-                document.getElementById('barcodes-list').innerHTML = '<p>Error loading barcodes</p>';
-            }
+            } catch (error) { document.getElementById('barcodes-list').innerHTML = '<p>Error loading barcodes</p>'; }
         }
         
         async function deleteBarcode(id) {
             if (!confirm(`Delete barcode ${id}?`)) return;
-            
-            try {
-                const response = await fetch(`/api/qr/delete/${id}`, {
-                    method: 'DELETE'
-                });
-                
-                const data = await response.json();
-                alert(data.message);
-                loadBarcodes();
-                
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
+            await fetch(`/api/qr/delete/${id}`, { method: 'DELETE' });
+            loadBarcodes();
         }
         
-        // ==================== INITIAL LOAD ====================
         loadQRCodes();
         loadBarcodes();
         updateFullUrlPreview();
