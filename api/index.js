@@ -86,7 +86,25 @@ app.post('/api/qr/generate', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
+// In api/index.js - Add this to the redirect endpoint
+app.get('/api/r/:id', async (req, res) => {
+    const { id } = req.params;
+    
+    // Check if this is a product QR code (COF prefix)
+    if (id.startsWith('COF') || id.startsWith('YIRG') || id.startsWith('SIDM') || id.startsWith('GUJI')) {
+        // Redirect to product landing page (not payment directly)
+        const landingUrl = `/product.html?id=${id}`;
+        return res.redirect(landingUrl);
+    }
+    
+    // For other QR codes (TEST001, etc.), use normal redirect
+    const qrData = await db.getQRCode(id);
+    if (qrData?.destination_url) {
+        res.redirect(qrData.destination_url);
+    } else {
+        res.status(404).send('QR code not found');
+    }
+});
 // ============================================
 // LIST ALL QR CODES (FROM NEON - PERMANENT)
 // ============================================

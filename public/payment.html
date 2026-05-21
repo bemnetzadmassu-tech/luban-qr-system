@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luban Coffee - Secure Payment</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #4A2C1A; margin-bottom: 20px; }
+        .amount {
+            font-size: 36px;
+            color: #D4AF37;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        input, select {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+        }
+        .btn-pay {
+            background: linear-gradient(135deg, #F2D57E, #D4AF37, #8C6B1F);
+            color: #1a1a2e;
+            border: none;
+            padding: 16px 30px;
+            border-radius: 40px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .payment-methods {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .payment-method {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: #f0f0f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .payment-method.selected {
+            background: linear-gradient(135deg, #F2D57E, #D4AF37);
+            color: #1a1a2e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>☕ Secure Payment</h1>
+            <div class="amount" id="amount">$24.99</div>
+            
+            <div class="payment-methods">
+                <div class="payment-method" onclick="selectMethod('card')">💳 Card</div>
+                <div class="payment-method" onclick="selectMethod('telebirr')">📱 Telebirr</div>
+                <div class="payment-method" onclick="selectMethod('chapa')">📲 Chapa</div>
+            </div>
+            
+            <div id="card-fields">
+                <div class="form-group">
+                    <label>Card Number</label>
+                    <input type="text" placeholder="1234 5678 9012 3456">
+                </div>
+                <div class="form-group">
+                    <label>Expiry Date</label>
+                    <input type="text" placeholder="MM/YY">
+                </div>
+                <div class="form-group">
+                    <label>CVV</label>
+                    <input type="text" placeholder="123">
+                </div>
+            </div>
+            
+            <div id="telebirr-fields" style="display: none;">
+                <div class="form-group">
+                    <label>Telebirr Phone Number</label>
+                    <input type="tel" placeholder="0912345678">
+                </div>
+                <p style="font-size: 12px; color: #666;">You will receive a payment request on your Telebirr app</p>
+            </div>
+            
+            <div id="chapa-fields" style="display: none;">
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" placeholder="your@email.com">
+                </div>
+            </div>
+            
+            <button class="btn-pay" onclick="processPayment()">✅ Confirm Payment</button>
+            <p style="text-align: center; margin-top: 20px; font-size: 12px; color: #999;">
+                🔒 Secure • No fees • Money-back guarantee
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+        const amount = urlParams.get('amount') || '24.99';
+        
+        document.getElementById('amount').innerHTML = `$${amount}`;
+        
+        let selectedMethod = 'card';
+        
+        function selectMethod(method) {
+            selectedMethod = method;
+            
+            // Update UI
+            document.querySelectorAll('.payment-method').forEach(el => {
+                el.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+            
+            // Show/hide fields
+            document.getElementById('card-fields').style.display = method === 'card' ? 'block' : 'none';
+            document.getElementById('telebirr-fields').style.display = method === 'telebirr' ? 'block' : 'none';
+            document.getElementById('chapa-fields').style.display = method === 'chapa' ? 'block' : 'none';
+        }
+        
+        async function processPayment() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            
+            // Simulate payment processing
+            setTimeout(() => {
+                // Redirect to success page
+                window.location.href = `/success.html?id=${productId}&amount=${amount}&method=${selectedMethod}`;
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
