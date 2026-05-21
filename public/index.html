@@ -757,6 +757,55 @@
         loadQRCodes();
         loadBarcodes();
         updateFullUrlPreview();
+        // ==================== ADD THESE FUNCTIONS ====================
+
+// Function to toggle between Redirect and Product page
+function togglePageType(id, type) {
+    const redirectDiv = document.getElementById(`redirect-fields-${id}`);
+    const productDiv = document.getElementById(`product-fields-${id}`);
+    
+    if (redirectDiv && productDiv) {
+        if (type === 'redirect') {
+            redirectDiv.style.display = 'block';
+            productDiv.style.display = 'none';
+        } else {
+            redirectDiv.style.display = 'none';
+            productDiv.style.display = 'block';
+        }
+    }
+}
+
+// Function to update product page
+async function updateProductPage(id) {
+    const productName = document.getElementById(`product-name-${id}`).value;
+    const productPrice = parseFloat(document.getElementById(`product-price-${id}`).value);
+    const productDescription = document.getElementById(`product-desc-${id}`).value;
+    
+    if (!productName) {
+        alert('Product name is required');
+        return;
+    }
+    
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    
+    try {
+        const response = await fetch(`/api/qr/update-product/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productName, productPrice, productDescription })
+        });
+        const data = await response.json();
+        alert(data.message);
+        loadQRCodes(); // Refresh the list
+    } catch (error) {
+        alert('Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Product Page';
+    }
+}
     </script>
 </body>
 </html>
