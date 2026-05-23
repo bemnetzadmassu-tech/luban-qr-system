@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luban Coffee - POS Terminal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; color: white; margin-bottom: 20px; }
+        .pos-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .scan-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: monospace;
+            margin-top: 15px;
+        }
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .total {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: right;
+            padding-top: 15px;
+            border-top: 2px solid #eee;
+            margin-top: 15px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-success { background: #28a745; }
+        @media (max-width: 768px) { .pos-layout { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>☕ Luban Coffee - POS Terminal</h1>
+        <div class="pos-layout">
+            <div>
+                <div class="card">
+                    <h2>🛒 Current Cart</h2>
+                    <div id="cart-items"><p style="color:#999;">No items</p></div>
+                    <div id="cart-total" class="total">Total: $0.00</div>
+                    <button class="btn" onclick="clearCart()">Clear Cart</button>
+                    <button class="btn btn-success" onclick="checkout()">✅ Checkout</button>
+                </div>
+                <div class="card">
+                    <h2>📷 Scan Barcode</h2>
+                    <input type="text" id="barcode-input" class="scan-input" placeholder="LBN-250-MR-X8K2A91" autofocus>
+                    <div id="scan-result"></div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>📊 Today's Sales</h2>
+                <div id="sales-info">Loading...</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let cart = [];
+        const baseUrl = window.location.origin;
+        
+        document.getElementById('barcode-input').addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                const barcode = e.target.value.trim();
+                if (barcode) {
+                    cart.push({ barcode, name: 'Luban Coffee', price: 24.99 });
+                    updateCart();
+                    e.target.value = '';
+                    document.getElementById('scan-result').innerHTML = '<span style="color:green;">✅ Added</span>';
+                    setTimeout(() => document.getElementById('scan-result').innerHTML = '', 2000);
+                }
+            }
+        });
+        
+        function updateCart() {
+            const cartDiv = document.getElementById('cart-items');
+            let total = 0;
+            if (cart.length === 0) { cartDiv.innerHTML = '<p style="color:#999;">No items</p>'; document.getElementById('cart-total').innerHTML = 'Total: $0.00'; return; }
+            let html = '';
+            for (let i = 0; i < cart.length; i++) { total += cart[i].price; html += `<div class="cart-item"><div><strong>${cart[i].name}</strong><br>${cart[i].barcode}</div><div>$${cart[i].price} <button onclick="removeItem(${i})" style="background:#dc3545;color:white;border:none;padding:5px 10px;border-radius:5px;">Remove</button></div></div>`; }
+            cartDiv.innerHTML = html; document.getElementById('cart-total').innerHTML = `Total: $${total.toFixed(2)}`;
+        }
+        
+        function removeItem(i) { cart.splice(i, 1); updateCart(); }
+        function clearCart() { cart = []; updateCart(); }
+        async function checkout() {
+            if (cart.length === 0) { alert('Cart empty'); return; }
+            const total = cart.reduce((s, i) => s + i.price, 0);
+            if (!confirm(`Total: $${total.toFixed(2)} - Confirm checkout?`)) return;
+            alert('✅ Checkout successful!'); clearCart();
+        }
+        document.getElementById('sales-info').innerHTML = '<p>Total Sales Today: $0.00</p><p>Transactions: 0</p>';
+    </script>
+</body>
+</html>

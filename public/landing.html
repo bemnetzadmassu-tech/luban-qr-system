@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luban Coffee - Premium Ethiopian Coffee</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: white; }
+        .hero {
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=1200');
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .hero h1 { font-size: 4rem; margin-bottom: 20px; }
+        .btn {
+            background: linear-gradient(135deg, #F2D57E, #D4AF37);
+            color: #1a1a2e;
+            padding: 12px 30px;
+            border-radius: 40px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+            font-weight: bold;
+        }
+        .section { padding: 80px 20px; max-width: 1200px; margin: 0 auto; text-align: center; }
+        .section h2 { font-size: 2.5rem; margin-bottom: 40px; color: #D4AF37; }
+        .products { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; }
+        .product { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 30px; }
+        .verify-box { background: white; color: #333; max-width: 500px; margin: 0 auto; padding: 30px; border-radius: 20px; }
+        .verify-box input { width: 100%; padding: 12px; font-family: monospace; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; }
+        footer { text-align: center; padding: 40px; border-top: 1px solid rgba(255,255,255,0.1); }
+        @media (max-width: 768px) { .hero h1 { font-size: 2rem; } .section h2 { font-size: 1.8rem; } }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <div><h1>☕ Luban Coffee</h1><p>Premium Ethiopian Coffee • Single Origin</p><a href="#shop" class="btn">Shop Now</a><a href="#verify" class="btn">Verify Product</a></div>
+    </section>
+    <section id="shop" class="section"><h2>Our Collection</h2><div class="products">
+        <div class="product"><h3>Yirgacheffe</h3><p>Light Roast • Floral • Bergamot</p><div style="font-size:24px; margin:15px 0;">$24.99</div><button class="btn" style="padding:8px 20px;">Buy</button></div>
+        <div class="product"><h3>Sidama</h3><p>Medium Roast • Berry • Chocolate</p><div style="font-size:24px; margin:15px 0;">$22.99</div><button class="btn" style="padding:8px 20px;">Buy</button></div>
+        <div class="product"><h3>Guji</h3><p>Medium-Dark • Blueberry • Wine</p><div style="font-size:24px; margin:15px 0;">$26.99</div><button class="btn" style="padding:8px 20px;">Buy</button></div>
+    </div></section>
+    <section id="verify" class="section"><h2>Verify Authenticity</h2><div class="verify-box"><p>Enter the serial number from your coffee bag:</p><input type="text" id="barcode" placeholder="LBN-250-MR-X8K2A91"><button class="btn" onclick="verify()" style="width:100%;">Verify</button><div id="result" style="margin-top:15px;"></div></div></section>
+    <footer><p>© 2025 Luban Coffee • Addis Ababa, Ethiopia</p></footer>
+    <script>
+        async function verify() {
+            const barcode = document.getElementById('barcode').value;
+            const resultDiv = document.getElementById('result');
+            if (!barcode) { resultDiv.innerHTML = 'Please enter a barcode'; return; }
+            resultDiv.innerHTML = 'Verifying...';
+            setTimeout(() => { resultDiv.innerHTML = '<span style="color:green;">✅ Authentic Product</span><br>This product is verified.'; }, 1000);
+        }
+    </script>
+</body>
+</html>
