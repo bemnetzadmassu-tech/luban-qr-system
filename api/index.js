@@ -3,69 +3,63 @@ const cors = require('cors');
 const path = require('path');
 const QRCode = require('qrcode');
 const bwipjs = require('bwip-js');
-const { Pool } = require('pg');
+const db = require('../database');
+const { validateAdminPassword } = require('./middleware/auth');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // ============================================
-// NEON POSTGRES - PERMANENT STORAGE
+// AUTHENTICATION
 // ============================================
-const pool = new Pool({
-    connectionString: process.env.POSTGRES_URL,
-    ssl: { rejectUnauthorized: false }
+app.post('/api/admin/login', (req, res) => {
+    const { password } = req.body;
+    if (validateAdminPassword(password)) {
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ error: 'Invalid password' });
+    }
 });
 
-// Create table if not exists
-async function initDB() {
-    try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS qr_codes (
-                id TEXT PRIMARY KEY,
-                destination_url TEXT,
-                scan_count INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        console.log('✅ Neon Postgres connected');
-    } catch (error) {
-        console.error('DB error:', error.message);
-    }
-}
-initDB();
-
-// Health check
+// ============================================
+// HEALTH CHECK
+// ============================================
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // ============================================
-// CREATE QR CODE
+// STATISTICS
+// ============================================
+app.get('/api/stats', async (req, res) => {
+    try {
+        const result = await db.query('SELECT COUNT(*) as total, SUM(scan_count) as scans FROM qr_codes');
+        res.json({ success: true, stats: result.rows[0] });
+    } catch (error) {
+        res.json({ success: true, stats: { total: 0, scans: 0 } });
+    }
+});
+
+// ============================================
+// QR CODE ENDPOINTS
 // ============================================
 app.post('/api/qr/create', async (req, res) => {
     const { id } = req.body;
-    if (!id) return res.status(400).json({ error: 'ID is required' });
+    if (!id) return res.status(400).json({ error: 'ID required' });
     
     try {
-        await pool.query(
-            'INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING',
-            [id]
-        );
-        console.log(`✅ QR code saved: ${id}`);
-        res.json({ success: true, id: id });
+        await db.query('INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [id]);
+        res.json({ success: true, id });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// ============================================
-// GENERATE QR CODE IMAGE
-// ============================================
 app.post('/api/qr/generate', async (req, res) => {
     try {
         const { content, darkColor = '#D4AF37', lightColor = '#FFFFFF', format = 'png' } = req.body;
-        if (!content) return res.status(400).json({ error: 'Content is required' });
+        if (!content) return res.status(400).json({ error: 'Content required' });
         
         if (format === 'svg') {
             const svgString = await QRCode.toString(content, {
@@ -73,189 +67,116 @@ app.post('/api/qr/generate', async (req, res) => {
                 color: { dark: darkColor, light: lightColor },
                 errorCorrectionLevel: 'H'
             });
-            res.json({ success: true, svgContent: svgString, content: content, format: 'svg' });
+            res.json({ success: true, svgContent: svgString, format: 'svg' });
         } else {
             const qrBuffer = await QRCode.toBuffer(content, {
                 type: 'png', width: 500, margin: 2,
                 color: { dark: darkColor, light: lightColor },
                 errorCorrectionLevel: 'H'
             });
-            res.json({ success: true, image: `data:image/png;base64,${qrBuffer.toString('base64')}`, content: content });
+            res.json({ success: true, image: `data:image/png;base64,${qrBuffer.toString('base64')}` });
         }
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// ============================================
-// LIST ALL QR CODES
-// ============================================
-// ============================================
-// LIST ALL QR CODES (WITH PRODUCT FIELDS)
-// ============================================
 app.get('/api/qr/list', async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await db.query(`
             SELECT id, destination_url, scan_count, created_at,
                    page_type, product_name, product_price, product_description
-            FROM qr_codes 
-            ORDER BY created_at DESC
+            FROM qr_codes ORDER BY created_at DESC
         `);
-        console.log(`📋 Retrieved ${result.rows.length} QR codes`);
         res.json({ success: true, codes: result.rows });
     } catch (error) {
-        console.error('List error:', error);
         res.json({ success: true, codes: [] });
     }
 });
 
-// ============================================
-// UPDATE DESTINATION (Regular Redirect)
-// ============================================
 app.put('/api/qr/update/:id', async (req, res) => {
     const { id } = req.params;
     const { destinationUrl } = req.body;
     
     try {
-        await pool.query(
-            'UPDATE qr_codes SET destination_url = $1 WHERE id = $2',
-            [destinationUrl, id]
-        );
-        console.log(`✏️ Updated ${id} → ${destinationUrl}`);
-        res.json({ success: true, message: `Updated ${id} → ${destinationUrl}` });
+        await db.query('UPDATE qr_codes SET destination_url = $1 WHERE id = $2', [destinationUrl, id]);
+        res.json({ success: true, message: `Updated ${id}` });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// ============================================
-// DELETE QR CODE
-// ============================================
 app.delete('/api/qr/delete/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        await pool.query('DELETE FROM qr_codes WHERE id = $1', [id]);
-        res.json({ success: true, message: `Deleted ${id}` });
+        await db.query('DELETE FROM qr_codes WHERE id = $1', [id]);
+        res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// ============================================
-// UPDATE PRODUCT PAGE (FIXED)
-// ============================================
 app.put('/api/qr/update-product/:id', async (req, res) => {
     const { id } = req.params;
     const { productName, productPrice, productDescription } = req.body;
     
-    console.log(`📝 Saving product page for ${id}:`, { productName, productPrice, productDescription });
-    
     try {
-        // Ensure columns exist
-        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_name TEXT`);
-        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_price DECIMAL(10,2)`);
-        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_description TEXT`);
-        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS page_type TEXT DEFAULT 'redirect'`);
+        await db.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_name TEXT`);
+        await db.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_price DECIMAL(10,2)`);
+        await db.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_description TEXT`);
+        await db.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS page_type TEXT DEFAULT 'redirect'`);
         
-        // Update the record
-        const result = await pool.query(`
+        await db.query(`
             UPDATE qr_codes 
-            SET page_type = 'product', 
-                product_name = $1, 
-                product_price = $2, 
-                product_description = $3,
-                destination_url = NULL
+            SET page_type = 'product', product_name = $1, product_price = $2, product_description = $3, destination_url = NULL
             WHERE id = $4
-            RETURNING *
         `, [productName, productPrice, productDescription, id]);
         
-        if (result.rows.length === 0) {
-            // If record doesn't exist, create it
-            await pool.query(`
-                INSERT INTO qr_codes (id, page_type, product_name, product_price, product_description)
-                VALUES ($1, 'product', $2, $3, $4)
-            `, [id, productName, productPrice, productDescription]);
-        }
-        
-        console.log(`✅ Saved product page for ${id}: ${productName}`);
         res.json({ success: true, message: `Product page saved for ${id}` });
-        
     } catch (error) {
-        console.error('Update product error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// ============================================
-// GET PRODUCT INFO (FIXED)
-// ============================================
 app.get('/api/qr/product/:id', async (req, res) => {
     const { id } = req.params;
-    
     try {
-        const result = await pool.query(`
-            SELECT id, page_type, product_name, product_price, product_description, destination_url
-            FROM qr_codes 
-            WHERE id = $1
+        const result = await db.query(`
+            SELECT page_type, product_name, product_price, product_description, destination_url
+            FROM qr_codes WHERE id = $1
         `, [id]);
-        
-        if (result.rows.length === 0) {
-            return res.json({ success: true, product: { page_type: 'redirect' } });
-        }
-        
-        res.json({ success: true, product: result.rows[0] });
+        res.json({ success: true, product: result.rows[0] || {} });
     } catch (error) {
-        console.error('Get product error:', error);
-        res.status(500).json({ error: error.message });
+        res.json({ success: true, product: {} });
     }
 });
 
 // ============================================
-// MAIN REDIRECT ENDPOINT (ONLY ONE!)
-// Handles BOTH regular redirects AND product pages
+// REDIRECT ENDPOINT
 // ============================================
 app.get('/api/r/:id', async (req, res) => {
     const { id } = req.params;
-    
     try {
-        // Ensure columns exist
-        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS page_type TEXT DEFAULT 'redirect'`);
-        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_name TEXT`);
-        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_price DECIMAL(10,2)`);
-        await pool.query(`ALTER TABLE qr_codes ADD COLUMN IF NOT EXISTS product_description TEXT`);
-        
-        const result = await pool.query(`
+        const result = await db.query(`
             SELECT page_type, destination_url, product_name, product_price, product_description 
             FROM qr_codes WHERE id = $1
         `, [id]);
         
         if (result.rows.length === 0) {
-            return res.status(404).send(`Code "${id}" not found. Generate it first.`);
+            return res.status(404).send('QR code not found');
         }
         
         const qrData = result.rows[0];
+        await db.query('UPDATE qr_codes SET scan_count = scan_count + 1 WHERE id = $1', [id]);
         
-        // Increment scan count
-        await pool.query('UPDATE qr_codes SET scan_count = scan_count + 1 WHERE id = $1', [id]);
-        
-        // Check if it's a product page
         if (qrData.page_type === 'product' && qrData.product_name) {
             const productPage = `/product.html?id=${id}&name=${encodeURIComponent(qrData.product_name)}&price=${qrData.product_price}&desc=${encodeURIComponent(qrData.product_description || '')}`;
-            console.log(`📦 Product: ${id} → ${qrData.product_name}`);
             return res.redirect(productPage);
         }
         
-        // Regular redirect to URL
-        if (!qrData.destination_url) {
-            return res.status(404).send(`Code "${id}" has no destination set.`);
-        }
-        
-        console.log(`📱 QR SCAN: ${id} → ${qrData.destination_url}`);
-        res.redirect(qrData.destination_url);
-        
+        res.redirect(qrData.destination_url || '/');
     } catch (error) {
-        console.error('Redirect error:', error);
-        res.status(500).send('Server error');
+        res.redirect('/');
     }
 });
 
@@ -264,25 +185,18 @@ app.get('/api/r/:id', async (req, res) => {
 // ============================================
 app.post('/api/barcode/generate', async (req, res) => {
     try {
-        const { id, barcodeType = 'code128', barColor = '#D4AF37' } = req.body;
-        if (!id) return res.status(400).json({ error: 'ID is required' });
+        const { id, barColor = '#D4AF37' } = req.body;
+        if (!id) return res.status(400).json({ error: 'ID required' });
         
         const barcodeBuffer = await new Promise((resolve, reject) => {
             bwipjs.toBuffer({
-                bcid: barcodeType, text: id, scale: 3, height: 12,
+                bcid: 'code128', text: id, scale: 3, height: 12,
                 includetext: true, textxalign: 'center',
                 barcolor: barColor.replace('#', '')
             }, (err, png) => err ? reject(err) : resolve(png));
         });
         
-        await pool.query('INSERT INTO qr_codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [id]);
-        
-        res.json({
-            success: true,
-            image: `data:image/png;base64,${barcodeBuffer.toString('base64')}`,
-            id: id,
-            value: id
-        });
+        res.json({ success: true, image: `data:image/png;base64,${barcodeBuffer.toString('base64')}`, id });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -290,7 +204,7 @@ app.post('/api/barcode/generate', async (req, res) => {
 
 app.post('/api/barcode/batch', async (req, res) => {
     try {
-        const { prefix, startNumber, endNumber, barcodeType = 'code128', barColor = '#D4AF37' } = req.body;
+        const { prefix, startNumber, endNumber, barColor = '#D4AF37' } = req.body;
         const results = [];
         const padLength = String(endNumber).length;
         
@@ -298,12 +212,12 @@ app.post('/api/barcode/batch', async (req, res) => {
             const id = `${prefix}${String(i).padStart(padLength, '0')}`;
             const barcodeBuffer = await new Promise((resolve, reject) => {
                 bwipjs.toBuffer({
-                    bcid: barcodeType, text: id, scale: 3, height: 12,
+                    bcid: 'code128', text: id, scale: 3, height: 12,
                     includetext: true, textxalign: 'center',
                     barcolor: barColor.replace('#', '')
                 }, (err, png) => err ? reject(err) : resolve(png));
             });
-            results.push({ id: id, image: `data:image/png;base64,${barcodeBuffer.toString('base64')}` });
+            results.push({ id, image: barcodeBuffer.toString('base64') });
         }
         res.json({ success: true, total: results.length, barcodes: results });
     } catch (error) {
@@ -311,8 +225,22 @@ app.post('/api/barcode/batch', async (req, res) => {
     }
 });
 
-// Serve static files
-app.use(express.static(path.join(__dirname, '../public')));
+// ============================================
+// PRODUCTS ENDPOINT
+// ============================================
+app.get('/api/products', async (req, res) => {
+    const products = [
+        { id: 'YIRG001', name: 'Yirgacheffe Coffee', price: 24.99, stock: 500, origin: 'Ethiopia', roast: 'Light' },
+        { id: 'SIDM001', name: 'Sidama Coffee', price: 22.99, stock: 350, origin: 'Ethiopia', roast: 'Medium' },
+        { id: 'GUJI001', name: 'Guji Coffee', price: 26.99, stock: 200, origin: 'Ethiopia', roast: 'Medium-Dark' }
+    ];
+    res.json({ success: true, products });
+});
+
+// ============================================
+// SERVE STATIC FILES
+// ============================================
+app.use(express.static('public'));
 
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {

@@ -1,105 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luban Coffee - Yirgacheffe</title>
+    <title>Luban Coffee - Product</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
-            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
         }
-        .container { max-width: 600px; margin: 0 auto; }
         .card {
             background: white;
             border-radius: 24px;
-            padding: 30px;
-            margin-bottom: 30px;
+            padding: 40px;
+            max-width: 500px;
+            text-align: center;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         h1 { color: #4A2C1A; margin-bottom: 10px; }
-        .price { font-size: 32px; color: #D4AF37; font-weight: bold; margin: 20px 0; }
-        .description { color: #666; line-height: 1.6; margin-bottom: 30px; }
-        .btn-pay {
-            background: linear-gradient(135deg, #F2D57E, #D4AF37, #8C6B1F);
-            color: #1a1a2e;
+        .price { font-size: 36px; color: #D4AF37; font-weight: bold; margin: 20px 0; }
+        .description { color: #666; line-height: 1.6; margin: 20px 0; }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             border: none;
-            padding: 16px 30px;
+            padding: 14px 30px;
             border-radius: 40px;
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 16px;
             cursor: pointer;
-            width: 100%;
-            transition: transform 0.2s;
-        }
-        .btn-pay:hover { transform: scale(1.02); }
-        .product-image {
-            width: 100%;
-            border-radius: 16px;
-            margin-bottom: 20px;
-        }
-        .payment-options {
-            display: flex;
-            gap: 15px;
-            margin-top: 20px;
-            justify-content: center;
-        }
-        .payment-icon {
-            padding: 10px 20px;
-            background: #f0f0f0;
-            border-radius: 30px;
-            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <img src="https://placehold.co/600x400/4A2C1A/white?text=Luban+Coffee" alt="Coffee" class="product-image">
-            <h1 id="product-name">Yirgacheffe Coffee</h1>
-            <p class="description" id="product-desc">
-                Premium single-origin coffee from Ethiopia. Floral notes, bergamot, and jasmine.
-                Light roast, perfect for pour-over and espresso.
-            </p>
-            <div class="price" id="product-price">$24.99</div>
-            
-            <div class="payment-options">
-                <span class="payment-icon">💳 Card</span>
-                <span class="payment-icon">📱 Telebirr</span>
-                <span class="payment-icon">📲 Chapa</span>
-            </div>
-            
-            <button class="btn-pay" onclick="startPayment()">☕ Buy Now - Free Shipping</button>
-            <p style="text-align: center; margin-top: 20px; font-size: 12px; color: #999;">
-                🔒 Secure payment • 100% satisfaction guaranteed
-            </p>
-        </div>
+    <div class="card">
+        <h1 id="name">Loading...</h1>
+        <div class="price" id="price">$--.--</div>
+        <p class="description" id="desc">Loading...</p>
+        <button class="btn" onclick="buy()">🛒 Buy Now</button>
+        <p style="margin-top: 20px; font-size: 12px; color: #999;" id="id"></p>
     </div>
-    
     <script>
-        // Get product info from URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const productId = urlParams.get('id') || 'COF001';
-        
-        // Product database (in real app, fetch from API)
-        const products = {
-            'COF001': { name: 'Yirgacheffe Coffee', price: 24.99, desc: 'Floral notes, bergamot, jasmine' },
-            'COF002': { name: 'Sidama Coffee', price: 22.99, desc: 'Berry, citrus, chocolate notes' },
-            'COF003': { name: 'Guji Coffee', price: 26.99, desc: 'Blueberry, wine, cocoa' }
-        };
-        
-        const product = products[productId] || products['COF001'];
-        document.getElementById('product-name').innerHTML = product.name;
-        document.getElementById('product-price').innerHTML = `$${product.price}`;
-        document.getElementById('product-desc').innerHTML = product.desc;
-        
-        async function startPayment() {
-            // Redirect to payment page
-            window.location.href = `/payment.html?id=${productId}&amount=${product.price}`;
-        }
+        const url = new URL(window.location.href);
+        const id = url.searchParams.get('id');
+        const name = decodeURIComponent(url.searchParams.get('name') || 'Luban Coffee');
+        const price = url.searchParams.get('price') || '24.99';
+        const desc = decodeURIComponent(url.searchParams.get('desc') || 'Premium Ethiopian coffee');
+        document.getElementById('name').innerText = name;
+        document.getElementById('price').innerText = `$${price}`;
+        document.getElementById('desc').innerText = desc;
+        document.getElementById('id').innerText = `Product ID: ${id}`;
+        function buy() { alert(`Order ${name} for $${price}`); }
     </script>
 </body>
 </html>
