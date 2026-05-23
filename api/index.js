@@ -34,10 +34,29 @@ app.get('/api/health', (req, res) => {
 // ============================================
 // STATISTICS
 // ============================================
+// ============================================
+// STATISTICS - Reads from BOTH tables
+// ============================================
 app.get('/api/stats', async (req, res) => {
     try {
-        const result = await db.query('SELECT COUNT(*) as total, SUM(qr_scan_count) as scans FROM codes');
-        res.json({ success: true, stats: result.rows[0] || { total: 0, scans: 0 } });
+        let totalCodes = 0;
+        let totalScans = 0;
+        
+        // Get from new codes table
+        try {
+            const newResult = await db.query('SELECT COUNT(*) as total, COALESCE(SUM(qr_scan_count), 0) as scans FROM codes');
+            totalCodes += parseInt(newResult.rows[0]?.total || 0);
+            totalScans += parseInt(newResult.rows[0]?.scans || 0);
+        } catch (err) {}
+        
+        // Get from old qr_codes table
+        try {
+            const oldResult = await db.query('SELECT COUNT(*) as total, COALESCE(SUM(scan_count), 0) as scans FROM qr_codes');
+            totalCodes += parseInt(oldResult.rows[0]?.total || 0);
+            totalScans += parseInt(oldResult.rows[0]?.scans || 0);
+        } catch (err) {}
+        
+        res.json({ success: true, stats: { total: totalCodes, scans: totalScans } });
     } catch (error) {
         console.error('Stats error:', error);
         res.json({ success: true, stats: { total: 0, scans: 0 } });
@@ -86,14 +105,64 @@ app.post('/api/qr/generate', async (req, res) => {
     }
 });
 
+// ============================================
+// QR CODE LIST - Reads from BOTH tables
+// ============================================
 app.get('/api/qr/list', async (req, res) => {
     try {
-        const result = await db.query(`
-            SELECT id, qr_destination as destination_url, qr_scan_count as scan_count, created_at,
-                   page_type, product_name, product_price, product_description
-            FROM codes ORDER BY created_at DESC
-        `);
-        res.json({ success: true, codes: result.rows });
+        // Try to get from new 'codes' table first
+        let codes = [];
+        
+        try {
+            const newResult = await db.query(`
+                SELECT 
+                    id, 
+                    qr_destination as destination_url, 
+                    qr_scan_count as scan_count, 
+                    created_at,
+                    page_type, 
+                    product_name, 
+                    product_price, 
+                    product_description
+                FROM codes 
+                ORDER BY created_at DESC
+            `);
+            codes = [...newResult.rows];
+        } catch (err) {
+            console.log('New codes table not found, using old table only');
+        }
+        
+        // Also get from old 'qr_codes' table
+        try {
+            const oldResult = await db.query(`
+                SELECT 
+                    id, 
+                    destination_url, 
+                    scan_count, 
+                    created_at,
+                    page_type, 
+                    product_name, 
+                    product_price, 
+                    product_description
+                FROM qr_codes 
+                ORDER BY created_at DESC
+            `);
+            
+            // Merge old codes that aren't already in new table
+            const existingIds = new Set(codes.map(c => c.id));
+            for (const oldCode of oldResult.rows) {
+                if (!existingIds.has(oldCode.id)) {
+                    codes.push(oldCode);
+                }
+            }
+        } catch (err) {
+            console.log('Old qr_codes table not found');
+        }
+        
+        // Sort by created_at descending (newest first)
+        codes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        res.json({ success: true, codes: codes });
     } catch (error) {
         console.error('List QR error:', error);
         res.json({ success: true, codes: [] });
@@ -147,14 +216,35 @@ app.put('/api/qr/update-product/:id', async (req, res) => {
     }
 });
 
+// ============================================
+// GET PRODUCT DETAILS - Checks BOTH tables
+// ============================================
 app.get('/api/qr/product/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await db.query(`
-            SELECT page_type, product_name, product_price, product_description, qr_destination
+        let product = {};
+        
+        // Try new codes table first
+        const newResult = await db.query(`
+            SELECT page_type, product_name, product_price, product_description, qr_destination as destination_url
             FROM codes WHERE id = $1
         `, [id]);
-        res.json({ success: true, product: result.rows[0] || {} });
+        
+        if (newResult.rows.length > 0) {
+            product = newResult.rows[0];
+        } else {
+            // Try old qr_codes table
+            const oldResult = await db.query(`
+                SELECT page_type, product_name, product_price, product_description, destination_url
+                FROM qr_codes WHERE id = $1
+            `, [id]);
+            
+            if (oldResult.rows.length > 0) {
+                product = oldResult.rows[0];
+            }
+        }
+        
+        res.json({ success: true, product: product });
     } catch (error) {
         console.error('Get product error:', error);
         res.json({ success: true, product: {} });
