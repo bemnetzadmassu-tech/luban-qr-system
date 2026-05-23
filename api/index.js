@@ -5,7 +5,14 @@ const QRCode = require('qrcode');
 const bwipjs = require('bwip-js');
 const db = require('../database');
 const { validateAdminPassword } = require('./middleware/auth');
+// Add these to your main index.js after existing routes
+const barcodeRoutes = require('./routes/barcodeRoutes');
+const posRoutes = require('./routes/posRoutes');
+const inventoryRoutes = require('./routes/inventoryRoutes');
 
+app.use('/api/barcode', barcodeRoutes);
+app.use('/api/pos', posRoutes);
+app.use('/api/inventory', inventoryRoutes);
 const app = express();
 app.use(cors());
 app.use(express.json());

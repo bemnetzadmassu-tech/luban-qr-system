@@ -1,6 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../../database');
+const barcodeController = require('../controllers/barcodeController');
+
+// Generate unique serialized barcodes (factory)
+router.post('/generate/serialized', barcodeController.generateSerializedBarcodes);
+
+// Verify barcode (anti-counterfeit)
+router.get('/verify/:barcodeValue', barcodeController.verifyBarcodeEndpoint);
+
+// Get barcode status
+router.get('/status/:barcode', barcodeController.getBarcodeStatus);
+
+// Generate single barcode
+router.post('/generate', barcodeController.generateSingleBarcode);
+
+// Batch generate barcodes
+router.post('/batch', barcodeController.batchGenerateBarcodes);
+
+module.exports = router;
 
 // Generate premium barcode (LBN-250-MR-X8K2A91 format)
 router.post('/premium/generate', async (req, res) => {

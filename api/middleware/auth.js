@@ -1,18 +1,24 @@
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'luban123';
-
-function requireAuth(req, res, next) {
-    const token = req.headers['x-auth-token'] || req.body.token || req.query.token;
-    
-    // Allow during development or if token matches
-    if (token === ADMIN_PASSWORD || process.env.NODE_ENV === 'development') {
-        next();
-    } else {
-        res.status(401).json({ error: 'Unauthorized access' });
-    }
-}
+// Authentication middleware
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'lubanadmin2024';
 
 function validateAdminPassword(password) {
     return password === ADMIN_PASSWORD;
 }
 
-module.exports = { requireAuth, validateAdminPassword };
+function authenticateAdmin(req, res, next) {
+    const token = req.headers.authorization;
+    
+    // Simple token validation (you can enhance with JWT later)
+    if (!token || token !== `Bearer ${ADMIN_PASSWORD}`) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    next();
+}
+
+// Generate simple session token
+function generateToken() {
+    return Buffer.from(`${Date.now()}-${ADMIN_PASSWORD}`).toString('base64');
+}
+
+module.exports = { validateAdminPassword, authenticateAdmin, generateToken };
