@@ -453,20 +453,116 @@ app.get('/api/r/:id', async (req, res) => {
     }
 });
 
-// Stats endpoint
+// ============================================
+// STATISTICS - Auto-detects schema and reads from all tables
+// ============================================
 app.get('/api/stats', async (req, res) => {
     try {
-        const schema = await detectSchema();
-        const result = await smartQuery(`
-            SELECT COUNT(*) as total, COALESCE(SUM(${schema.scanColumn}), 0) as scans
-            FROM ${schema.qrTable}
-        `);
-        res.json({ success: true, stats: result.rows[0] });
+        let totalCodes = 0;
+        let totalScans = 0;
+        
+        // Try to get from all possible QR tables
+        const possibleTables = ['qr_codes', 'codes', 'qrcodes'];
+        
+        for (const tableName of possibleTables) {
+            try {
+                // Check if table exists
+                const tableCheck = await db.query(`
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = $1
+                    )
+                `, [tableName]);
+                
+                if (tableCheck.rows[0].exists) {
+                    // Get column names for this table
+                    const columns = await db.query(`
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = $1
+                    `, [tableName]);
+                    
+                    const colNames = columns.rows.map(c => c.column_name);
+                    
+                    // Find scan count column
+                    let scanCol = colNames.find(c => 
+                        c.includes('scan_count') || 
+                        c.includes('scans') || 
+                        c === 'qr_scan_count'
+                    ) || 'scan_count';
+                    
+                    // Query the table
+                    const result = await db.query(`
+                        SELECT 
+                            COUNT(*) as total,
+                            COALESCE(SUM(${scanCol}), 0) as scans
+                        FROM ${tableName}
+                    `);
+                    
+                    totalCodes += parseInt(result.rows[0]?.total || 0);
+                    totalScans += parseInt(result.rows[0]?.scans || 0);
+                    
+                    console.log(`📊 ${tableName}: ${result.rows[0]?.total} codes, ${result.rows[0]?.scans} scans`);
+                }
+            } catch (err) {
+                console.log(`Error reading ${tableName}:`, err.message);
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            stats: { 
+                total: totalCodes, 
+                scans: totalScans 
+            } 
+        });
     } catch (error) {
+        console.error('Stats error:', error);
         res.json({ success: true, stats: { total: 0, scans: 0 } });
     }
 });
-
+// ============================================
+// DEBUG - Check what tables and data exist
+// ============================================
+app.get('/api/debug/database', async (req, res) => {
+    try {
+        const debug = {};
+        
+        // Check all possible tables
+        const tables = ['qr_codes', 'codes', 'qrcodes', 'products', 'inventory'];
+        
+        for (const tableName of tables) {
+            try {
+                const exists = await db.query(`
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = $1
+                    )
+                `, [tableName]);
+                
+                if (exists.rows[0].exists) {
+                    const count = await db.query(`SELECT COUNT(*) FROM ${tableName}`);
+                    const sample = await db.query(`SELECT * FROM ${tableName} LIMIT 3`);
+                    
+                    debug[tableName] = {
+                        exists: true,
+                        count: parseInt(count.rows[0].count),
+                        sample: sample.rows,
+                        columns: sample.rows.length > 0 ? Object.keys(sample.rows[0]) : []
+                    };
+                } else {
+                    debug[tableName] = { exists: false };
+                }
+            } catch (err) {
+                debug[tableName] = { exists: false, error: err.message };
+            }
+        }
+        
+        res.json({ success: true, debug });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 // Products endpoint
 app.get('/api/products', async (req, res) => {
     const products = [
