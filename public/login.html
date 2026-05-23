@@ -58,6 +58,11 @@
         <div id="error" class="error"></div>
     </div>
     <script>
+        // Check if already logged in - redirect immediately
+        if (localStorage.getItem('adminToken')) {
+            window.location.replace('/admin/index.html');
+        }
+        
         async function login() {
             const password = document.getElementById('password').value;
             try {
@@ -69,7 +74,7 @@
                 const data = await response.json();
                 if (data.success) {
                     localStorage.setItem('adminToken', password);
-                    window.location.href = '/admin/index.html';
+                    window.location.replace('/admin/index.html');
                 } else {
                     document.getElementById('error').innerText = 'Invalid password';
                 }

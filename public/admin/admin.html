@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luban Coffee - Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f1a;
+            color: white;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #F2D57E, #D4AF37);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .nav-item {
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .nav-item:hover, .nav-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 20px 30px;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .page-title {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 40px;
+        }
+        
+        /* Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #D4AF37;
+        }
+        
+        /* Content Panels */
+        .panel {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Tables */
+        .data-table {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .data-table th {
+            background: rgba(0,0,0,0.3);
+            font-weight: 600;
+        }
+        
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #ccc;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .color-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .color-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; }
+            .sidebar span { display: none; }
+            .main-content { margin-left: 70px; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">☕ LUBAN</div>
+        <nav>
+            <div class="nav-item active" onclick="showPanel('dashboard')">
+                <span>📊</span> <span>Dashboard</span>
+            </div>
+            <div class="nav-item" onclick="showPanel('qr')">
+                <span>📱</span> <span>QR Codes</span>
+            </div>
+            <div class="nav-item" onclick="showPanel('barcode')">
+                <span>📊</span> <span>Barcodes</span>
+            </div>
+            <div class="nav-item" onclick="showPanel('pages')">
+                <span>📄</span> <span>Landing Pages</span>
+            </div>
+            <div class="nav-item" onclick="showPanel('products')">
+                <span>☕</span> <span>Products</span>
+            </div>
+            <div class="nav-item" onclick="showPanel('pos')">
+                <span>💳</span> <span>POS Terminal</span>
+            </div>
+            <div class="nav-item" onclick="showPanel('analytics')">
+                <span>📈</span> <span>Analytics</span>
+            </div>
+        </nav>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="header">
+            <h1 class="page-title" id="page-title">Dashboard</h1>
+            <div class="user-info">
+                <span>👤 Admin</span>
+                <span>🔔</span>
+            </div>
+        </div>
+        
+        <!-- Dashboard Panel -->
+        <div id="dashboard-panel" class="panel active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-qr">0</div>
+                    <div>Total QR Codes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-scans">0</div>
+                    <div>Total Scans</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="active-products">0</div>
+                    <div>Active Products</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="inventory-stock">0</div>
+                    <div>Units in Stock</div>
+                </div>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>Recent QR Codes</h3>
+                <div id="recent-codes"></div>
+            </div>
+        </div>
+        
+        <!-- QR Panel -->
+        <div id="qr-panel" class="panel">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                    <h3>Generate QR Code</h3>
+                    <div class="form-group">
+                        <label>QR Code ID</label>
+                        <input type="text" id="qr-id" placeholder="COF001, YIRG001">
+                    </div>
+                    <div class="form-group">
+                        <label>Destination URL</label>
+                        <input type="url" id="qr-dest" placeholder="https://lubancoffee.et/yirgacheffe">
+                    </div>
+                    <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label>Dark Color</label>
+                            <div class="color-row">
+                                <input type="color" id="qr-dark" value="#D4AF37">
+                                <input type="text" id="qr-dark-hex" value="#D4AF37">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Light Color</label>
+                            <div class="color-row">
+                                <input type="color" id="qr-light" value="#FFFFFF">
+                                <input type="text" id="qr-light-hex" value="#FFFFFF">
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="generateQR()">🚀 Generate QR Code</button>
+                    <div id="qr-result" style="margin-top: 20px; text-align: center;"></div>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                    <h3>Manage QR Codes</h3>
+                    <button class="btn-secondary" onclick="loadQRCodes()" style="margin-bottom: 15px;">🔄 Refresh</button>
+                    <div id="qr-list" style="max-height: 400px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Barcode Panel -->
+        <div id="barcode-panel" class="panel">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>Generate Premium Barcode</h3>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Weight (g)</label>
+                        <input type="number" id="barcode-weight" value="250">
+                    </div>
+                    <div class="form-group">
+                        <label>Roast Code</label>
+                        <select id="barcode-roast">
+                            <option value="LR">Light Roast (LR)</option>
+                            <option value="MR">Medium Roast (MR)</option>
+                            <option value="DR">Dark Roast (DR)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" id="barcode-qty" value="10">
+                    </div>
+                </div>
+                <button onclick="generatePremiumBarcodes()">📊 Generate Barcodes</button>
+                <div id="barcode-result" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+        
+        <!-- Pages Panel (Dynamic Landing Pages) -->
+        <div id="pages-panel" class="panel">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>Dynamic Landing Pages</h3>
+                <p>Select which QR code redirects to a product landing page</p>
+                
+                <div class="form-group">
+                    <label>Select QR Code</label>
+                    <select id="page-qr-select" onchange="loadPageData()">
+                        <option value="">-- Select QR Code --</option>
+                    </select>
+                </div>
+                
+                <div id="page-editor" style="display: none;">
+                    <div class="form-group">
+                        <label>Page Type</label>
+                        <select id="page-type" onchange="togglePageFields()">
+                            <option value="redirect">🔗 Redirect to URL</option>
+                            <option value="product">🛍️ Product Landing Page</option>
+                        </select>
+                    </div>
+                    
+                    <div id="redirect-fields">
+                        <div class="form-group">
+                            <label>Destination URL</label>
+                            <input type="url" id="page-destination" placeholder="https://lubancoffee.et">
+                        </div>
+                    </div>
+                    
+                    <div id="product-fields" style="display: none;">
+                        <div class="form-group">
+                            <label>Product Name</label>
+                            <input type="text" id="product-name" placeholder="Yirgacheffe Coffee">
+                        </div>
+                        <div class="form-group">
+                            <label>Price ($)</label>
+                            <input type="number" id="product-price" step="0.01" placeholder="24.99">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="product-desc" rows="3" placeholder="Product description..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Product Image URL</label>
+                            <input type="url" id="product-image" placeholder="https://...">
+                        </div>
+                    </div>
+                    
+                    <button onclick="savePageSettings()">💾 Save Page Settings</button>
+                </div>
+                
+                <div id="page-preview" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+        
+        <!-- Products Panel -->
+        <div id="products-panel" class="panel">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>Coffee Products</h3>
+                <button class="btn-secondary" onclick="loadProducts()">🔄 Refresh</button>
+                <div id="products-list" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+        
+        <!-- POS Panel -->
+        <div id="pos-panel" class="panel">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                    <h3>Scan Barcode</h3>
+                    <input type="text" id="pos-barcode" placeholder="LBN-250-MR-XXXXXXX" style="font-family: monospace;">
+                    <button onclick="addToCart()" style="margin-top: 10px;">➕ Add to Cart</button>
+                    <div id="cart-items" style="margin-top: 20px;"></div>
+                    <div id="cart-total" style="font-size: 24px; font-weight: bold; margin-top: 20px;">Total: $0.00</div>
+                    <button class="btn-secondary" onclick="clearCart()">Clear Cart</button>
+                    <button onclick="checkout()" style="margin-top: 10px;">✅ Checkout</button>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                    <h3>Today's Sales</h3>
+                    <div id="sales-info"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Analytics Panel -->
+        <div id="analytics-panel" class="panel">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>Scan Analytics</h3>
+                <div id="analytics-stats"></div>
+                <h3 style="margin-top: 20px;">Recent Scans</h3>
+                <div id="recent-scans"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const baseUrl = window.location.origin;
+        let cart = [];
+        
+        function showPanel(panelName) {
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.getElementById(`${panelName}-panel`).classList.add('active');
+            event.target.closest('.nav-item').classList.add('active');
+            
+            const titles = {
+                dashboard: 'Dashboard',
+                qr: 'QR Code Manager',
+                barcode: 'Barcode Generator',
+                pages: 'Landing Page Manager',
+                products: 'Product Manager',
+                pos: 'POS Terminal',
+                analytics: 'Analytics'
+            };
+            document.getElementById('page-title').innerText = titles[panelName] || panelName;
+            
+            if (panelName === 'dashboard') loadDashboard();
+            if (panelName === 'qr') loadQRCodes();
+            if (panelName === 'products') loadProducts();
+            if (panelName === 'pages') loadPageSelect();
+            if (panelName === 'analytics') loadAnalytics();
+        }
+        
+        async function loadDashboard() {
+            const response = await fetch('/api/qr/list');
+            const data = await response.json();
+            document.getElementById('total-qr').innerText = data.codes?.length || 0;
+            
+            let totalScans = 0;
+            data.codes?.forEach(c => totalScans += c.scan_count || 0);
+            document.getElementById('total-scans').innerText = totalScans;
+            document.getElementById('active-products').innerText = '4';
+            document.getElementById('inventory-stock').innerText = '1500';
+            
+            let html = '<table class="data-table"><tr><th>ID</th><th>Destination</th><th>Scans</th></tr>';
+            data.codes?.slice(0, 5).forEach(c => {
+                html += `<tr><td>${c.id}</td><td>${c.destination_url || 'Not set'}</td><td>${c.scan_count || 0}</td></tr>`;
+            });
+            html += '</table>';
+            document.getElementById('recent-codes').innerHTML = html;
+        }
+        
+        async function generateQR() {
+            const id = document.getElementById('qr-id').value;
+            const destinationUrl = document.getElementById('qr-dest').value;
+            const darkColor = document.getElementById('qr-dark').value;
+            const lightColor = document.getElementById('qr-light').value;
+            
+            if (!id || !destinationUrl) { alert('Enter ID and Destination URL'); return; }
+            
+            await fetch('/api/qr/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            
+            await fetch('/api/qr/update/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ destinationUrl })
+            });
+            
+            const response = await fetch('/api/qr/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: `${baseUrl}/api/r/${id}`,
+                    darkColor, lightColor, format: 'png'
+                })
+            });
+            const data = await response.json();
+            
+            document.getElementById('qr-result').innerHTML = `
+                <img src="${data.image}" style="max-width: 150px;"><br>
+                <strong>${id}</strong><br>
+                <small>${baseUrl}/api/r/${id}</small>
+            `;
+            loadQRCodes();
+        }
+        
+        async function loadQRCodes() {
+            const response = await fetch('/api/qr/list');
+            const data = await response.json();
+            let html = '';
+            data.codes?.forEach(code => {
+                html += `<div style="background: rgba(255,255,255,0.05); padding: 12px; margin-bottom: 10px; border-radius: 10px;">
+                    <strong>📱 ${code.id}</strong><br>
+                    Destination: ${code.destination_url || 'Not set'}<br>
+                    Scans: ${code.scan_count || 0}<br>
+                    <input type="text" id="edit-${code.id}" placeholder="New URL" style="margin-top: 8px;">
+                    <button onclick="updateQR('${code.id}')">Update</button>
+                    <button onclick="deleteQR('${code.id}')" style="background:#dc3545;">Delete</button>
+                </div>`;
+            });
+            document.getElementById('qr-list').innerHTML = html || '<p>No QR codes yet</p>';
+        }
+        
+        async function updateQR(id) {
+            const newUrl = document.getElementById(`edit-${id}`).value;
+            if (!newUrl) return;
+            await fetch(`/api/qr/update/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ destinationUrl: newUrl })
+            });
+            alert('Updated!');
+            loadQRCodes();
+        }
+        
+        async function deleteQR(id) {
+            if (!confirm('Delete?')) return;
+            await fetch(`/api/qr/delete/${id}`, { method: 'DELETE' });
+            loadQRCodes();
+            loadDashboard();
+        }
+        
+        async function generatePremiumBarcodes() {
+            const weight = document.getElementById('barcode-weight').value;
+            const roast = document.getElementById('barcode-roast').value;
+            const qty = parseInt(document.getElementById('barcode-qty').value);
+            
+            const barcodes = [];
+            for (let i = 0; i < qty; i++) {
+                const serial = Math.random().toString(36).substr(2, 7).toUpperCase();
+                barcodes.push(`LBN-${weight}-${roast}-${serial}`);
+            }
+            
+            let html = '<h4>Generated Barcodes:</h4><div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+            barcodes.forEach(b => {
+                html += `<div style="background: rgba(255,255,255,0.1); padding: 8px 12px; border-radius: 8px; font-family: monospace;">${b}</div>`;
+            });
+            html += '</div>';
+            document.getElementById('barcode-result').innerHTML = html;
+        }
+        
+        async function loadPageSelect() {
+            const response = await fetch('/api/qr/list');
+            const data = await response.json();
+            let html = '<option value="">-- Select QR Code --</option>';
+            data.codes?.forEach(c => html += `<option value="${c.id}">${c.id}</option>`);
+            document.getElementById('page-qr-select').innerHTML = html;
+        }
+        
+        async function loadPageData() {
+            const qrId = document.getElementById('page-qr-select').value;
+            if (!qrId) { document.getElementById('page-editor').style.display = 'none'; return; }
+            
+            const response = await fetch(`/api/qr/product/${qrId}`);
+            const data = await response.json();
+            const product = data.product || {};
+            
+            document.getElementById('page-type').value = product.page_type === 'product' ? 'product' : 'redirect';
+            document.getElementById('page-destination').value = product.destination_url || '';
+            document.getElementById('product-name').value = product.product_name || '';
+            document.getElementById('product-price').value = product.product_price || '';
+            document.getElementById('product-desc').value = product.product_description || '';
+            togglePageFields();
+            document.getElementById('page-editor').style.display = 'block';
+        }
+        
+        function togglePageFields() {
+            const type = document.getElementById('page-type').value;
+            document.getElementById('redirect-fields').style.display = type === 'redirect' ? 'block' : 'none';
+            document.getElementById('product-fields').style.display = type === 'product' ? 'block' : 'none';
+        }
+        
+        async function savePageSettings() {
+            const qrId = document.getElementById('page-qr-select').value;
+            const type = document.getElementById('page-type').value;
+            
+            if (type === 'redirect') {
+                const destination = document.getElementById('page-destination').value;
+                await fetch(`/api/qr/update/${qrId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ destinationUrl: destination })
+                });
+                alert(`QR code ${qrId} now redirects to ${destination}`);
+            } else {
+                const productName = document.getElementById('product-name').value;
+                const productPrice = parseFloat(document.getElementById('product-price').value);
+                const productDesc = document.getElementById('product-desc').value;
+                await fetch(`/api/qr/update-product/${qrId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productName, productPrice, productDescription: productDesc })
+                });
+                alert(`Product page saved for ${qrId}`);
+            }
+            loadPageSelect();
+        }
+        
+        async function loadProducts() {
+            const response = await fetch('/api/products');
+            const data = await response.json();
+            let html = '<table class="data-table"><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th></tr>';
+            (data.products || []).forEach(p => {
+                html += `<tr><td>${p.id}</td><td>${p.name}</td><td>$${p.price}</td><td>${p.stock || 0}</td></tr>`;
+            });
+            html += '</table>';
+            document.getElementById('products-list').innerHTML = html;
+        }
+        
+        function addToCart() {
+            const barcode = document.getElementById('pos-barcode').value;
+            if (!barcode) return;
+            cart.push({ barcode, price: 24.99 });
+            updateCartDisplay();
+            document.getElementById('pos-barcode').value = '';
+        }
+        
+        function updateCartDisplay() {
+            let html = '';
+            let total = 0;
+            cart.forEach((item, i) => {
+                total += item.price;
+                html += `<div style="display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <span>${item.barcode}</span>
+                    <span>$${item.price}</span>
+                    <button onclick="removeFromCart(${i})" style="background:#dc3545; padding: 4px 8px;">Remove</button>
+                </div>`;
+            });
+            document.getElementById('cart-items').innerHTML = html || '<p>Empty cart</p>';
+            document.getElementById('cart-total').innerHTML = `Total: $${total.toFixed(2)}`;
+        }
+        
+        function removeFromCart(i) { cart.splice(i, 1); updateCartDisplay(); }
+        function clearCart() { cart = []; updateCartDisplay(); }
+        function checkout() { alert(`Checkout: ${cart.length} items`); clearCart(); }
+        
+        async function loadAnalytics() {
+            const response = await fetch('/api/qr/list');
+            const data = await response.json();
+            let totalScans = 0;
+            data.codes?.forEach(c => totalScans += c.scan_count || 0);
+            document.getElementById('analytics-stats').innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-value">${data.codes?.length || 0}</div><div>Total QR Codes</div></div>
+                    <div class="stat-card"><div class="stat-value">${totalScans}</div><div>Total Scans</div></div>
+                    <div class="stat-card"><div class="stat-value">${(totalScans / (data.codes?.length || 1)).toFixed(1)}</div><div>Avg Scans/Code</div></div>
+                </div>
+            `;
+        }
+        
+        loadDashboard();
+        updateCartDisplay();
+    </script>
+</body>
+</html>
