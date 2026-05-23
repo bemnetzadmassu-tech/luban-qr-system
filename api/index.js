@@ -182,62 +182,135 @@ app.post('/api/admin/login', (req, res) => {
 });
 
 // SMART LIST - Auto-detects schema
+// ============================================
+// QR CODE LIST - FIXED for your database.js structure
+// ============================================
+// ============================================
+// SMART LIST - Auto-detects schema (FIXED for your db)
+// ============================================
 app.get('/api/qr/list', async (req, res) => {
     try {
-        const schema = await detectSchema();
-        const table = schema.qrTable;
+        console.log('🔍 Auto-detecting database schema...');
         
-        // Build query dynamically based on available columns
-        let selectFields = [`${schema.idColumn} as id`];
+        let allCodes = [];
         
-        if (schema.urlColumn) selectFields.push(`${schema.urlColumn} as destination_url`);
-        if (schema.scanColumn) selectFields.push(`${schema.scanColumn} as scan_count`);
-        if (schema.dateColumn) selectFields.push(`${schema.dateColumn} as created_at`);
-        if (schema.pageTypeColumn) selectFields.push(`${schema.pageTypeColumn} as page_type`);
-        if (schema.productNameColumn) selectFields.push(`${schema.productNameColumn} as product_name`);
-        if (schema.productPriceColumn) selectFields.push(`${schema.productPriceColumn} as product_price`);
-        if (schema.productDescColumn) selectFields.push(`${schema.productDescColumn} as product_description`);
+        // Get pool from your db export
+        const pool = db.pool;
         
-        const query = `
-            SELECT ${selectFields.join(', ')}
-            FROM ${table}
-            ORDER BY ${schema.dateColumn || 'created_at'} DESC
-        `;
+        if (!pool) {
+            console.error('No database pool found');
+            return res.json({ success: true, codes: [] });
+        }
         
-        const result = await smartQuery(query);
+        // Find all tables that might contain QR codes
+        const tablesResult = await pool.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name IN ('qr_codes', 'codes', 'qrcodes', 'qr_code')
+        `);
         
-        // Also try to get from other tables if they exist
-        let allCodes = [...result.rows];
-        
-        // Check for other QR tables
-        const otherTables = ['codes', 'qr_codes', 'qrcodes'].filter(t => t !== table);
-        for (const otherTable of otherTables) {
-            try {
-                const otherResult = await smartQuery(`
-                    SELECT id, destination_url as destination_url, scan_count, created_at
-                    FROM ${otherTable}
-                    LIMIT 100
-                `);
-                for (const code of otherResult.rows) {
-                    if (!allCodes.find(c => c.id === code.id)) {
-                        allCodes.push(code);
-                    }
+        for (const table of tablesResult.rows) {
+            const tableName = table.table_name;
+            console.log(`📋 Checking table: ${tableName}`);
+            
+            // Get columns for this table
+            const columnsResult = await pool.query(`
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = $1
+            `, [tableName]);
+            
+            const columns = columnsResult.rows.map(c => c.column_name);
+            
+            // Detect column names
+            let idCol = columns.includes('id') ? 'id' : columns[0];
+            let urlCol = columns.find(c => c.includes('destination') || c.includes('url') || c === 'qr_destination') || 'destination_url';
+            let scanCol = columns.find(c => c.includes('scan_count') || c.includes('scans') || c === 'qr_scan_count') || 'scan_count';
+            let dateCol = columns.find(c => c.includes('created_at') || c.includes('date')) || 'created_at';
+            
+            // Build query
+            const query = `
+                SELECT 
+                    ${idCol} as id,
+                    ${urlCol} as destination_url,
+                    ${scanCol} as scan_count,
+                    ${dateCol} as created_at
+                FROM ${tableName}
+                ORDER BY ${dateCol} DESC
+            `;
+            
+            const result = await pool.query(query);
+            console.log(`   Found ${result.rows.length} codes in ${tableName}`);
+            
+            // Add to collection (avoid duplicates)
+            for (const code of result.rows) {
+                if (!allCodes.find(c => c.id === code.id)) {
+                    allCodes.push(code);
                 }
-            } catch (err) {
-                // Table doesn't exist, skip
             }
         }
         
+        // Sort by created_at
         allCodes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         
-        console.log(`📊 Auto-detected: ${allCodes.length} QR codes from ${table}`);
-        res.json({ success: true, codes: allCodes, schema: schema.qrTable });
+        console.log(`✅ Total unique codes: ${allCodes.length}`);
+        res.json({ success: true, codes: allCodes });
+        
     } catch (error) {
-        console.error('List error:', error);
+        console.error('Auto-detect error:', error);
         res.json({ success: true, codes: [] });
     }
 });
-
+// ============================================
+// DIAGNOSE - See what tables and columns exist
+// ============================================
+app.get('/api/diagnose', async (req, res) => {
+    try {
+        const pool = db.pool;
+        if (!pool) {
+            return res.json({ error: 'No database pool' });
+        }
+        
+        // Get all tables
+        const tables = await pool.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+            ORDER BY table_name
+        `);
+        
+        const result = {};
+        
+        for (const table of tables.rows) {
+            const tableName = table.table_name;
+            
+            // Get columns
+            const columns = await pool.query(`
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = $1
+                ORDER BY ordinal_position
+            `, [tableName]);
+            
+            // Get count
+            const count = await pool.query(`SELECT COUNT(*) FROM ${tableName}`);
+            
+            // Get sample
+            const sample = await pool.query(`SELECT * FROM ${tableName} LIMIT 2`);
+            
+            result[tableName] = {
+                columns: columns.rows,
+                count: parseInt(count.rows[0].count),
+                sample: sample.rows
+            };
+        }
+        
+        res.json({ success: true, tables: result });
+    } catch (error) {
+        res.json({ error: error.message });
+    }
+});
 // SMART CREATE - Auto-adapts to schema
 app.post('/api/qr/create', async (req, res) => {
     const { id } = req.body;
