@@ -39,7 +39,14 @@ async function initDB() {
                 user_agent TEXT
             )
         `);
-        
+        // Migrate data from old qr_codes table if it exists
+await pool.query(`
+    INSERT INTO codes (id, qr_destination, qr_scan_count, created_at, page_type, product_name, product_price, product_description)
+    SELECT id, destination_url, scan_count, created_at, page_type, product_name, product_price, product_description
+    FROM qr_codes
+    WHERE NOT EXISTS (SELECT 1 FROM codes WHERE codes.id = qr_codes.id)
+    ON CONFLICT (id) DO NOTHING
+`);
         // ============================================
         // NEW TABLES FOR MODULAR SYSTEM (ADDED)
         // ============================================

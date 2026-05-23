@@ -7,14 +7,171 @@ const db = require('../database');
 const { validateAdminPassword } = require('./middleware/auth');
 
 const app = express();
-
-// Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // ============================================
-// AUTHENTICATION
+// SMART SCHEMA DETECTION - Runs once
 // ============================================
+let schemaCache = null;
+
+async function detectSchema() {
+    if (schemaCache) return schemaCache;
+    
+    console.log('🔍 Auto-detecting database schema...');
+    
+    const schema = {
+        qrTable: null,
+        idColumn: 'id',
+        urlColumn: null,
+        scanColumn: null,
+        pageTypeColumn: null,
+        productNameColumn: null,
+        productPriceColumn: null,
+        productDescColumn: null,
+        dateColumn: null
+    };
+    
+    try {
+        // Get all tables
+        const tables = await db.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name IN ('qr_codes', 'codes', 'qrcodes', 'qr_code')
+            ORDER BY table_name
+        `);
+        
+        for (const table of tables.rows) {
+            const tableName = table.table_name;
+            
+            // Get columns for this table
+            const columns = await db.query(`
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = $1
+                ORDER BY ordinal_position
+            `, [tableName]);
+            
+            const columnNames = columns.rows.map(c => c.column_name);
+            
+            // Detect URL column
+            let urlCol = columnNames.find(c => 
+                c.includes('destination') || 
+                c.includes('url') || 
+                c === 'qr_destination'
+            );
+            
+            // Detect scan count column
+            let scanCol = columnNames.find(c => 
+                c.includes('scan_count') || 
+                c.includes('scans') || 
+                c === 'qr_scan_count'
+            );
+            
+            // Detect page type column
+            let pageTypeCol = columnNames.find(c => 
+                c === 'page_type' || 
+                c.includes('type')
+            );
+            
+            // Detect product columns
+            let productNameCol = columnNames.find(c => 
+                c === 'product_name' || 
+                c === 'name'
+            );
+            let productPriceCol = columnNames.find(c => 
+                c === 'product_price' || 
+                c === 'price'
+            );
+            let productDescCol = columnNames.find(c => 
+                c === 'product_description' || 
+                c === 'description'
+            );
+            
+            // Detect date column
+            let dateCol = columnNames.find(c => 
+                c.includes('created_at') || 
+                c.includes('date')
+            );
+            
+            if (urlCol || scanCol) {
+                schema.qrTable = tableName;
+                schema.urlColumn = urlCol || 'destination_url';
+                schema.scanColumn = scanCol || 'scan_count';
+                schema.pageTypeColumn = pageTypeCol || null;
+                schema.productNameColumn = productNameCol || null;
+                schema.productPriceColumn = productPriceCol || null;
+                schema.productDescColumn = productDescCol || null;
+                schema.dateColumn = dateCol || 'created_at';
+                schema.columns = columnNames;
+                
+                console.log(`✅ Detected table: ${tableName}`);
+                console.log(`   URL column: ${schema.urlColumn}`);
+                console.log(`   Scan column: ${schema.scanColumn}`);
+                break;
+            }
+        }
+        
+        // If no table found, create one
+        if (!schema.qrTable) {
+            console.log('📦 No QR table found, creating one...');
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS qr_codes (
+                    id TEXT PRIMARY KEY,
+                    destination_url TEXT,
+                    scan_count INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    page_type TEXT DEFAULT 'redirect',
+                    product_name TEXT,
+                    product_price DECIMAL(10,2),
+                    product_description TEXT
+                )
+            `);
+            schema.qrTable = 'qr_codes';
+            schema.urlColumn = 'destination_url';
+            schema.scanColumn = 'scan_count';
+            schema.pageTypeColumn = 'page_type';
+            schema.productNameColumn = 'product_name';
+            schema.productPriceColumn = 'product_price';
+            schema.productDescColumn = 'product_description';
+            schema.dateColumn = 'created_at';
+        }
+        
+        schemaCache = schema;
+        return schema;
+    } catch (error) {
+        console.error('Schema detection error:', error);
+        // Fallback defaults
+        schema.qrTable = 'qr_codes';
+        schema.urlColumn = 'destination_url';
+        schema.scanColumn = 'scan_count';
+        return schema;
+    }
+}
+
+// ============================================
+// SMART QUERY BUILDER
+// ============================================
+async function smartQuery(sql, params = []) {
+    try {
+        return await db.query(sql, params);
+    } catch (error) {
+        console.error('Query error:', error.message);
+        throw error;
+    }
+}
+
+// ============================================
+// AUTO-DETECT ENDPOINTS
+// ============================================
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Authentication
 app.post('/api/admin/login', (req, res) => {
     const { password } = req.body;
     if (validateAdminPassword(password)) {
@@ -24,191 +181,199 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-// ============================================
-// HEALTH CHECK
-// ============================================
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// ============================================
-// STATISTICS
-// ============================================
-// ============================================
-// STATISTICS - Reads from BOTH tables
-// ============================================
-app.get('/api/stats', async (req, res) => {
+// SMART LIST - Auto-detects schema
+app.get('/api/qr/list', async (req, res) => {
     try {
-        let totalCodes = 0;
-        let totalScans = 0;
+        const schema = await detectSchema();
+        const table = schema.qrTable;
         
-        // Get from new codes table
-        try {
-            const newResult = await db.query('SELECT COUNT(*) as total, COALESCE(SUM(qr_scan_count), 0) as scans FROM codes');
-            totalCodes += parseInt(newResult.rows[0]?.total || 0);
-            totalScans += parseInt(newResult.rows[0]?.scans || 0);
-        } catch (err) {}
+        // Build query dynamically based on available columns
+        let selectFields = [`${schema.idColumn} as id`];
         
-        // Get from old qr_codes table
-        try {
-            const oldResult = await db.query('SELECT COUNT(*) as total, COALESCE(SUM(scan_count), 0) as scans FROM qr_codes');
-            totalCodes += parseInt(oldResult.rows[0]?.total || 0);
-            totalScans += parseInt(oldResult.rows[0]?.scans || 0);
-        } catch (err) {}
+        if (schema.urlColumn) selectFields.push(`${schema.urlColumn} as destination_url`);
+        if (schema.scanColumn) selectFields.push(`${schema.scanColumn} as scan_count`);
+        if (schema.dateColumn) selectFields.push(`${schema.dateColumn} as created_at`);
+        if (schema.pageTypeColumn) selectFields.push(`${schema.pageTypeColumn} as page_type`);
+        if (schema.productNameColumn) selectFields.push(`${schema.productNameColumn} as product_name`);
+        if (schema.productPriceColumn) selectFields.push(`${schema.productPriceColumn} as product_price`);
+        if (schema.productDescColumn) selectFields.push(`${schema.productDescColumn} as product_description`);
         
-        res.json({ success: true, stats: { total: totalCodes, scans: totalScans } });
+        const query = `
+            SELECT ${selectFields.join(', ')}
+            FROM ${table}
+            ORDER BY ${schema.dateColumn || 'created_at'} DESC
+        `;
+        
+        const result = await smartQuery(query);
+        
+        // Also try to get from other tables if they exist
+        let allCodes = [...result.rows];
+        
+        // Check for other QR tables
+        const otherTables = ['codes', 'qr_codes', 'qrcodes'].filter(t => t !== table);
+        for (const otherTable of otherTables) {
+            try {
+                const otherResult = await smartQuery(`
+                    SELECT id, destination_url as destination_url, scan_count, created_at
+                    FROM ${otherTable}
+                    LIMIT 100
+                `);
+                for (const code of otherResult.rows) {
+                    if (!allCodes.find(c => c.id === code.id)) {
+                        allCodes.push(code);
+                    }
+                }
+            } catch (err) {
+                // Table doesn't exist, skip
+            }
+        }
+        
+        allCodes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        console.log(`📊 Auto-detected: ${allCodes.length} QR codes from ${table}`);
+        res.json({ success: true, codes: allCodes, schema: schema.qrTable });
     } catch (error) {
-        console.error('Stats error:', error);
-        res.json({ success: true, stats: { total: 0, scans: 0 } });
+        console.error('List error:', error);
+        res.json({ success: true, codes: [] });
     }
 });
 
-// ============================================
-// QR CODE ENDPOINTS
-// ============================================
+// SMART CREATE - Auto-adapts to schema
 app.post('/api/qr/create', async (req, res) => {
     const { id } = req.body;
     if (!id) return res.status(400).json({ error: 'ID required' });
     
     try {
-        await db.query('INSERT INTO codes (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [id]);
+        const schema = await detectSchema();
+        const table = schema.qrTable;
+        
+        // Build insert query dynamically
+        const columns = [schema.idColumn];
+        const values = [id];
+        const placeholders = ['$1'];
+        
+        if (schema.scanColumn) {
+            columns.push(schema.scanColumn);
+            values.push(0);
+            placeholders.push('$2');
+        }
+        
+        if (schema.pageTypeColumn) {
+            columns.push(schema.pageTypeColumn);
+            values.push('redirect');
+            placeholders.push(`$${values.length}`);
+        }
+        
+        const query = `
+            INSERT INTO ${table} (${columns.join(', ')})
+            VALUES (${placeholders.join(', ')})
+            ON CONFLICT (${schema.idColumn}) DO NOTHING
+        `;
+        
+        await smartQuery(query, values);
+        console.log(`✅ Created: ${id} in ${table}`);
         res.json({ success: true, id });
     } catch (error) {
-        console.error('Create QR error:', error);
+        console.error('Create error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-app.post('/api/qr/generate', async (req, res) => {
-    try {
-        const { content, darkColor = '#D4AF37', lightColor = '#FFFFFF', format = 'png' } = req.body;
-        if (!content) return res.status(400).json({ error: 'Content required' });
-        
-        if (format === 'svg') {
-            const svgString = await QRCode.toString(content, {
-                type: 'svg', width: 500, margin: 2,
-                color: { dark: darkColor, light: lightColor },
-                errorCorrectionLevel: 'H'
-            });
-            res.json({ success: true, svgContent: svgString, format: 'svg' });
-        } else {
-            const qrBuffer = await QRCode.toBuffer(content, {
-                type: 'png', width: 500, margin: 2,
-                color: { dark: darkColor, light: lightColor },
-                errorCorrectionLevel: 'H'
-            });
-            res.json({ success: true, image: `data:image/png;base64,${qrBuffer.toString('base64')}` });
-        }
-    } catch (error) {
-        console.error('Generate QR error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// ============================================
-// QR CODE LIST - Reads from BOTH tables
-// ============================================
-app.get('/api/qr/list', async (req, res) => {
-    try {
-        // Try to get from new 'codes' table first
-        let codes = [];
-        
-        try {
-            const newResult = await db.query(`
-                SELECT 
-                    id, 
-                    qr_destination as destination_url, 
-                    qr_scan_count as scan_count, 
-                    created_at,
-                    page_type, 
-                    product_name, 
-                    product_price, 
-                    product_description
-                FROM codes 
-                ORDER BY created_at DESC
-            `);
-            codes = [...newResult.rows];
-        } catch (err) {
-            console.log('New codes table not found, using old table only');
-        }
-        
-        // Also get from old 'qr_codes' table
-        try {
-            const oldResult = await db.query(`
-                SELECT 
-                    id, 
-                    destination_url, 
-                    scan_count, 
-                    created_at,
-                    page_type, 
-                    product_name, 
-                    product_price, 
-                    product_description
-                FROM qr_codes 
-                ORDER BY created_at DESC
-            `);
-            
-            // Merge old codes that aren't already in new table
-            const existingIds = new Set(codes.map(c => c.id));
-            for (const oldCode of oldResult.rows) {
-                if (!existingIds.has(oldCode.id)) {
-                    codes.push(oldCode);
-                }
-            }
-        } catch (err) {
-            console.log('Old qr_codes table not found');
-        }
-        
-        // Sort by created_at descending (newest first)
-        codes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        
-        res.json({ success: true, codes: codes });
-    } catch (error) {
-        console.error('List QR error:', error);
-        res.json({ success: true, codes: [] });
-    }
-});
-
+// SMART UPDATE - Auto-detects column names
 app.put('/api/qr/update/:id', async (req, res) => {
     const { id } = req.params;
     const { destinationUrl } = req.body;
     
     try {
-        await db.query('UPDATE codes SET qr_destination = $1 WHERE id = $2', [destinationUrl, id]);
+        const schema = await detectSchema();
+        const table = schema.qrTable;
+        
+        // Try to update with detected column name
+        const query = `
+            UPDATE ${table} 
+            SET ${schema.urlColumn} = $1 
+            WHERE ${schema.idColumn} = $2
+            RETURNING ${schema.idColumn}
+        `;
+        
+        const result = await smartQuery(query, [destinationUrl, id]);
+        
+        if (result.rowCount === 0) {
+            // Create if doesn't exist
+            await smartQuery(`
+                INSERT INTO ${table} (${schema.idColumn}, ${schema.urlColumn})
+                VALUES ($1, $2)
+                ON CONFLICT (${schema.idColumn}) 
+                DO UPDATE SET ${schema.urlColumn} = $2
+            `, [id, destinationUrl]);
+        }
+        
+        console.log(`✅ Updated: ${id} -> ${destinationUrl}`);
         res.json({ success: true, message: `Updated ${id}` });
     } catch (error) {
-        console.error('Update QR error:', error);
+        console.error('Update error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
+// SMART DELETE
 app.delete('/api/qr/delete/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        await db.query('DELETE FROM codes WHERE id = $1', [id]);
+        const schema = await detectSchema();
+        await smartQuery(`DELETE FROM ${schema.qrTable} WHERE ${schema.idColumn} = $1`, [id]);
+        console.log(`✅ Deleted: ${id}`);
         res.json({ success: true });
     } catch (error) {
-        console.error('Delete QR error:', error);
+        console.error('Delete error:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
+// SMART PRODUCT UPDATE
 app.put('/api/qr/update-product/:id', async (req, res) => {
     const { id } = req.params;
     const { productName, productPrice, productDescription } = req.body;
     
     try {
-        await db.query(`ALTER TABLE codes ADD COLUMN IF NOT EXISTS product_name TEXT`);
-        await db.query(`ALTER TABLE codes ADD COLUMN IF NOT EXISTS product_price DECIMAL(10,2)`);
-        await db.query(`ALTER TABLE codes ADD COLUMN IF NOT EXISTS product_description TEXT`);
-        await db.query(`ALTER TABLE codes ADD COLUMN IF NOT EXISTS page_type TEXT DEFAULT 'redirect'`);
+        const schema = await detectSchema();
+        const table = schema.qrTable;
         
-        await db.query(`
-            UPDATE codes 
-            SET page_type = 'product', product_name = $1, product_price = $2, product_description = $3, qr_destination = NULL
-            WHERE id = $4
-        `, [productName, productPrice, productDescription, id]);
+        const updates = [];
+        const values = [];
+        let paramCount = 1;
         
+        if (schema.pageTypeColumn) {
+            updates.push(`${schema.pageTypeColumn} = $${paramCount++}`);
+            values.push('product');
+        }
+        if (schema.productNameColumn && productName) {
+            updates.push(`${schema.productNameColumn} = $${paramCount++}`);
+            values.push(productName);
+        }
+        if (schema.productPriceColumn && productPrice) {
+            updates.push(`${schema.productPriceColumn} = $${paramCount++}`);
+            values.push(productPrice);
+        }
+        if (schema.productDescColumn && productDescription) {
+            updates.push(`${schema.productDescColumn} = $${paramCount++}`);
+            values.push(productDescription);
+        }
+        if (schema.urlColumn) {
+            updates.push(`${schema.urlColumn} = $${paramCount++}`);
+            values.push(null);
+        }
+        
+        values.push(id);
+        
+        const query = `
+            UPDATE ${table} 
+            SET ${updates.join(', ')}
+            WHERE ${schema.idColumn} = $${paramCount}
+        `;
+        
+        await smartQuery(query, values);
+        console.log(`✅ Product page saved: ${id}`);
         res.json({ success: true, message: `Product page saved for ${id}` });
     } catch (error) {
         console.error('Update product error:', error);
@@ -216,50 +381,49 @@ app.put('/api/qr/update-product/:id', async (req, res) => {
     }
 });
 
-// ============================================
-// GET PRODUCT DETAILS - Checks BOTH tables
-// ============================================
+// SMART GET PRODUCT
 app.get('/api/qr/product/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        let product = {};
+        const schema = await detectSchema();
+        const table = schema.qrTable;
         
-        // Try new codes table first
-        const newResult = await db.query(`
-            SELECT page_type, product_name, product_price, product_description, qr_destination as destination_url
-            FROM codes WHERE id = $1
-        `, [id]);
+        const selectFields = [];
+        if (schema.pageTypeColumn) selectFields.push(schema.pageTypeColumn);
+        if (schema.productNameColumn) selectFields.push(schema.productNameColumn);
+        if (schema.productPriceColumn) selectFields.push(schema.productPriceColumn);
+        if (schema.productDescColumn) selectFields.push(schema.productDescColumn);
+        if (schema.urlColumn) selectFields.push(`${schema.urlColumn} as destination_url`);
         
-        if (newResult.rows.length > 0) {
-            product = newResult.rows[0];
-        } else {
-            // Try old qr_codes table
-            const oldResult = await db.query(`
-                SELECT page_type, product_name, product_price, product_description, destination_url
-                FROM qr_codes WHERE id = $1
-            `, [id]);
-            
-            if (oldResult.rows.length > 0) {
-                product = oldResult.rows[0];
-            }
-        }
+        const query = `
+            SELECT ${selectFields.join(', ')}
+            FROM ${table}
+            WHERE ${schema.idColumn} = $1
+        `;
         
-        res.json({ success: true, product: product });
+        const result = await smartQuery(query, [id]);
+        res.json({ success: true, product: result.rows[0] || {} });
     } catch (error) {
         console.error('Get product error:', error);
         res.json({ success: true, product: {} });
     }
 });
 
-// ============================================
-// REDIRECT ENDPOINT (ONE QR → Landing Page)
-// ============================================
+// SMART REDIRECT
 app.get('/api/r/:id', async (req, res) => {
     const { id } = req.params;
     try {
-        const result = await db.query(`
-            SELECT page_type, qr_destination, product_name, product_price, product_description 
-            FROM codes WHERE id = $1
+        const schema = await detectSchema();
+        const table = schema.qrTable;
+        
+        const result = await smartQuery(`
+            SELECT ${schema.urlColumn} as destination_url, 
+                   ${schema.pageTypeColumn || 'NULL'} as page_type,
+                   ${schema.productNameColumn || 'NULL'} as product_name,
+                   ${schema.productPriceColumn || 'NULL'} as product_price,
+                   ${schema.productDescColumn || 'NULL'} as product_description
+            FROM ${table}
+            WHERE ${schema.idColumn} = $1
         `, [id]);
         
         if (result.rows.length === 0) {
@@ -267,23 +431,53 @@ app.get('/api/r/:id', async (req, res) => {
         }
         
         const qrData = result.rows[0];
-        await db.query('UPDATE codes SET qr_scan_count = qr_scan_count + 1 WHERE id = $1', [id]);
+        
+        // Increment scan count
+        if (schema.scanColumn) {
+            await smartQuery(`
+                UPDATE ${table} 
+                SET ${schema.scanColumn} = ${schema.scanColumn} + 1 
+                WHERE ${schema.idColumn} = $1
+            `, [id]);
+        }
         
         if (qrData.page_type === 'product' && qrData.product_name) {
             const productPage = `/landing.html?id=${id}&name=${encodeURIComponent(qrData.product_name)}&price=${qrData.product_price}&desc=${encodeURIComponent(qrData.product_description || '')}`;
             return res.redirect(productPage);
         }
         
-        res.redirect(qrData.qr_destination || '/');
+        res.redirect(qrData.destination_url || '/');
     } catch (error) {
         console.error('Redirect error:', error);
         res.redirect('/');
     }
 });
 
-// ============================================
-// BARCODE ENDPOINTS
-// ============================================
+// Stats endpoint
+app.get('/api/stats', async (req, res) => {
+    try {
+        const schema = await detectSchema();
+        const result = await smartQuery(`
+            SELECT COUNT(*) as total, COALESCE(SUM(${schema.scanColumn}), 0) as scans
+            FROM ${schema.qrTable}
+        `);
+        res.json({ success: true, stats: result.rows[0] });
+    } catch (error) {
+        res.json({ success: true, stats: { total: 0, scans: 0 } });
+    }
+});
+
+// Products endpoint
+app.get('/api/products', async (req, res) => {
+    const products = [
+        { id: 'YIRG001', name: 'Yirgacheffe Coffee', price: 24.99, stock: 500, origin: 'Ethiopia', roast: 'Light' },
+        { id: 'SIDM001', name: 'Sidama Coffee', price: 22.99, stock: 350, origin: 'Ethiopia', roast: 'Medium' },
+        { id: 'GUJI001', name: 'Guji Coffee', price: 26.99, stock: 200, origin: 'Ethiopia', roast: 'Medium-Dark' }
+    ];
+    res.json({ success: true, products });
+});
+
+// Barcode endpoints (keep existing)
 app.post('/api/barcode/generate', async (req, res) => {
     try {
         const { id, barColor = '#D4AF37' } = req.body;
@@ -299,172 +493,21 @@ app.post('/api/barcode/generate', async (req, res) => {
         
         res.json({ success: true, image: `data:image/png;base64,${barcodeBuffer.toString('base64')}`, id });
     } catch (error) {
-        console.error('Generate barcode error:', error);
         res.status(500).json({ error: error.message });
     }
 });
-
-app.post('/api/barcode/batch', async (req, res) => {
-    try {
-        const { prefix, startNumber, endNumber, barColor = '#D4AF37' } = req.body;
-        const results = [];
-        const padLength = String(endNumber).length;
-        
-        for (let i = startNumber; i <= endNumber; i++) {
-            const id = `${prefix}${String(i).padStart(padLength, '0')}`;
-            const barcodeBuffer = await new Promise((resolve, reject) => {
-                bwipjs.toBuffer({
-                    bcid: 'code128', text: id, scale: 3, height: 12,
-                    includetext: true, textxalign: 'center',
-                    barcolor: barColor.replace('#', '')
-                }, (err, png) => err ? reject(err) : resolve(png));
-            });
-            results.push({ id, image: barcodeBuffer.toString('base64') });
-        }
-        res.json({ success: true, total: results.length, barcodes: results });
-    } catch (error) {
-        console.error('Batch barcode error:', error);
-        res.status(500).json({ error: error.message });
-    }
+// Debug endpoint - shows what schema was detected
+app.get('/api/debug/schema', async (req, res) => {
+    const schema = await detectSchema();
+    res.json({ 
+        success: true, 
+        schema: schema,
+        message: `Using table: ${schema.qrTable}` 
+    });
 });
-
-// Premium serialized barcodes (LBN-250-MR-X8K2A91 format)
-app.post('/api/barcode/premium/generate', async (req, res) => {
-    try {
-        const { productId, quantity = 1, weightGrams = 250, roastCode = 'MR', batchNumber } = req.body;
-        
-        function generateSerial() {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let result = '';
-            for (let i = 0; i < 7; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-            return result;
-        }
-        
-        const results = [];
-        for (let i = 0; i < quantity; i++) {
-            const serialNumber = generateSerial();
-            const barcodeValue = `LBN-${weightGrams}-${roastCode}-${serialNumber}`;
-            
-            const barcodeBuffer = await new Promise((resolve, reject) => {
-                bwipjs.toBuffer({
-                    bcid: 'code128', text: barcodeValue, scale: 3, height: 12,
-                    includetext: true, textxalign: 'center',
-                    barcolor: 'D4AF37'
-                }, (err, png) => err ? reject(err) : resolve(png));
-            });
-            
-            results.push({ barcode: barcodeValue, image: barcodeBuffer.toString('base64') });
-        }
-        
-        res.json({ success: true, total: results.length, barcodes: results });
-    } catch (error) {
-        console.error('Premium barcode error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Verify barcode (anti-counterfeit)
-app.get('/api/barcode/verify/:barcode', async (req, res) => {
-    try {
-        const { barcode } = req.params;
-        const pattern = /^LBN-(\d{3})-([A-Z]{2})-([A-Z0-9]{7})$/;
-        const isValidFormat = pattern.test(barcode);
-        
-        res.json({
-            success: true,
-            valid: isValidFormat,
-            isAuthentic: isValidFormat,
-            message: isValidFormat ? '✅ Genuine product' : '❌ Invalid format',
-            verifiedAt: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Verify barcode error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// ============================================
-// PRODUCTS ENDPOINT
-// ============================================
-app.get('/api/products', async (req, res) => {
-    try {
-        const products = await db.getAllProducts();
-        res.json({ success: true, products: products || [] });
-    } catch (error) {
-        console.error('Products error:', error);
-        const fallbackProducts = [
-            { id: 'YIRG001', name: 'Yirgacheffe Coffee', price: 24.99, stock: 500, origin: 'Ethiopia', roast: 'Light' },
-            { id: 'SIDM001', name: 'Sidama Coffee', price: 22.99, stock: 350, origin: 'Ethiopia', roast: 'Medium' },
-            { id: 'GUJI001', name: 'Guji Coffee', price: 26.99, stock: 200, origin: 'Ethiopia', roast: 'Medium-Dark' }
-        ];
-        res.json({ success: true, products: fallbackProducts });
-    }
-});
-
-// ============================================
-// INVENTORY ENDPOINT
-// ============================================
-app.get('/api/inventory', async (req, res) => {
-    try {
-        const inventory = await db.getInventory();
-        res.json({ success: true, inventory: inventory || [] });
-    } catch (error) {
-        console.error('Inventory error:', error);
-        res.json({ success: true, inventory: [] });
-    }
-});
-
-// ============================================
-// POS ENDPOINTS
-// ============================================
-app.post('/api/pos/verify', async (req, res) => {
-    try {
-        const { barcodeValue } = req.body;
-        res.json({
-            success: true,
-            isValid: true,
-            product: { name: 'Coffee Product', price: 24.99, barcode: barcodeValue }
-        });
-    } catch (error) {
-        console.error('POS verify error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/api/pos/checkout', async (req, res) => {
-    try {
-        const { items, paymentMethod } = req.body;
-        const total = items.reduce((sum, item) => sum + (item.price || 24.99), 0);
-        const transactionId = `TXN-${Date.now()}`;
-        
-        res.json({
-            success: true,
-            transaction: { id: transactionId, total, items: items.length },
-            message: 'Checkout successful'
-        });
-    } catch (error) {
-        console.error('POS checkout error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// ============================================
-// ANALYTICS ENDPOINTS
-// ============================================
-app.get('/api/analytics/fraud', async (req, res) => {
-    res.json({ success: true, suspiciousScans: [], totalVerified: 0, fraudAlerts: 0 });
-});
-
-app.get('/api/analytics/scans', async (req, res) => {
-    res.json({ success: true, totalScans: 0, todayScans: 0, uniqueVisitors: 0 });
-});
-
-// ============================================
-// SERVE STATIC FILES
-// ============================================
+// Serve static files
 app.use(express.static('public'));
 
-// Catch-all for SPA
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(__dirname, '../public/index.html'));
