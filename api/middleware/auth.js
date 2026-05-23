@@ -1,4 +1,4 @@
-// Authentication middleware
+// Simple auth middleware
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'lubanadmin2024';
 
 function validateAdminPassword(password) {
@@ -8,17 +8,12 @@ function validateAdminPassword(password) {
 function authenticateAdmin(req, res, next) {
     const token = req.headers.authorization;
     
-    // Simple token validation (you can enhance with JWT later)
-    if (!token || token !== `Bearer ${ADMIN_PASSWORD}`) {
+    // Simple validation - you can enhance with JWT
+    if (!token) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     
     next();
 }
 
-// Generate simple session token
-function generateToken() {
-    return Buffer.from(`${Date.now()}-${ADMIN_PASSWORD}`).toString('base64');
-}
-
-module.exports = { validateAdminPassword, authenticateAdmin, generateToken };
+module.exports = { validateAdminPassword, authenticateAdmin };
