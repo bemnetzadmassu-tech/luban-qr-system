@@ -8,10 +8,6 @@ const pool = new Pool({
 // Initialize tables
 async function initDB() {
     try {
-        // ============================================
-        // YOUR EXISTING TABLES (UNCHANGED)
-        // ============================================
-        
         // Main table - ONE ID for BOTH QR and Barcode!
         await pool.query(`
             CREATE TABLE IF NOT EXISTS codes (
@@ -39,19 +35,17 @@ async function initDB() {
                 user_agent TEXT
             )
         `);
-        // Migrate data from old qr_codes table if it exists
-await pool.query(`
-    INSERT INTO codes (id, qr_destination, qr_scan_count, created_at, page_type, product_name, product_price, product_description)
-    SELECT id, destination_url, scan_count, created_at, page_type, product_name, product_price, product_description
-    FROM qr_codes
-    WHERE NOT EXISTS (SELECT 1 FROM codes WHERE codes.id = qr_codes.id)
-    ON CONFLICT (id) DO NOTHING
-`);
-        // ============================================
-        // NEW TABLES FOR MODULAR SYSTEM (ADDED)
-        // ============================================
         
-        // Products table (detailed product info)
+        // Migrate data from old qr_codes table if it exists
+        await pool.query(`
+            INSERT INTO codes (id, qr_destination, qr_scan_count, created_at, page_type, product_name, product_price, product_description)
+            SELECT id, destination_url, scan_count, created_at, page_type, product_name, product_price, product_description
+            FROM qr_codes
+            WHERE NOT EXISTS (SELECT 1 FROM codes WHERE codes.id = qr_codes.id)
+            ON CONFLICT (id) DO NOTHING
+        `);
+        
+        // Products table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS products (
                 id TEXT PRIMARY KEY,
@@ -73,7 +67,7 @@ await pool.query(`
             )
         `);
         
-        // Serialized Barcodes (Premium format: LBN-250-MR-X8K2A91)
+        // Serialized Barcodes
         await pool.query(`
             CREATE TABLE IF NOT EXISTS serialized_barcodes (
                 id SERIAL PRIMARY KEY,
@@ -130,7 +124,7 @@ await pool.query(`
             )
         `);
         
-        // Sale Items (line items)
+        // Sale Items
         await pool.query(`
             CREATE TABLE IF NOT EXISTS sale_items (
                 id SERIAL PRIMARY KEY,
@@ -154,7 +148,7 @@ await pool.query(`
             )
         `);
         
-        // QR Codes extended (for product pages)
+        // QR Codes extended
         await pool.query(`
             ALTER TABLE codes ADD COLUMN IF NOT EXISTS page_type TEXT DEFAULT 'redirect'
         `);
@@ -163,13 +157,21 @@ await pool.query(`
             ALTER TABLE codes ADD COLUMN IF NOT EXISTS product_description TEXT
         `);
         
-        // Create indexes for performance
+        await pool.query(`
+            ALTER TABLE codes ADD COLUMN IF NOT EXISTS product_price DECIMAL(10,2)
+        `);
+        
+        await pool.query(`
+            ALTER TABLE codes ADD COLUMN IF NOT EXISTS product_name TEXT
+        `);
+        
+        // Create indexes
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_serialized_barcodes_value ON serialized_barcodes(barcode_value)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_serialized_barcodes_product ON serialized_barcodes(product_id)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_sales_transactions_date ON sales_transactions(sale_date)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_inventory_product ON inventory(product_id)`);
         
-        // Insert sample products if none exist
+        // Insert sample products
         const productCount = await pool.query(`SELECT COUNT(*) FROM products`);
         if (parseInt(productCount.rows[0].count) === 0) {
             await pool.query(`
@@ -181,7 +183,7 @@ await pool.query(`
             `);
         }
         
-        // Insert inventory if none exist
+        // Insert inventory
         const inventoryCount = await pool.query(`SELECT COUNT(*) FROM inventory`);
         if (parseInt(inventoryCount.rows[0].count) === 0) {
             await pool.query(`
@@ -193,7 +195,7 @@ await pool.query(`
             `);
         }
         
-        console.log('✅ PostgreSQL Database initialized (Modular)');
+        console.log('✅ PostgreSQL Database initialized');
     } catch (error) {
         console.error('DB init error:', error.message);
     }
@@ -202,7 +204,7 @@ await pool.query(`
 initDB();
 
 // ============================================
-// YOUR EXISTING DB HELPERS (UNCHANGED)
+// DB HELPERS
 // ============================================
 const dbHelpers = {
     createCode: async (id, productName, productType, price, qrDestination) => {
@@ -267,11 +269,6 @@ const dbHelpers = {
         await pool.query(`DELETE FROM codes WHERE id = $1`, [id]);
     },
     
-    // ============================================
-    // NEW DB HELPERS FOR MODULAR SYSTEM (ADDED)
-    // ============================================
-    
-    // Products
     getAllProducts: async () => {
         const result = await pool.query(`SELECT * FROM products WHERE is_active = TRUE ORDER BY name`);
         return result.rows;
@@ -282,7 +279,6 @@ const dbHelpers = {
         return result.rows[0];
     },
     
-    // Serialized Barcodes
     createSerializedBarcode: async (barcodeValue, productId, productName, weightGrams, roastLevel, serialNumber, batchNumber) => {
         await pool.query(`
             INSERT INTO serialized_barcodes (barcode_value, product_id, product_name, weight_grams, roast_level, serial_number, batch_number)
@@ -308,7 +304,6 @@ const dbHelpers = {
         `, [soldPrice, barcodeValue]);
     },
     
-    // Inventory
     getInventory: async () => {
         const result = await pool.query(`
             SELECT i.*, p.name, p.price, p.description
@@ -327,7 +322,6 @@ const dbHelpers = {
         `, [quantityChange, productId]);
     },
     
-    // Sales
     createTransaction: async (transactionId, customerName, customerEmail, customerPhone, totalAmount, discountAmount, taxAmount, paymentMethod, cashierName, posTerminalId) => {
         await pool.query(`
             INSERT INTO sales_transactions 
@@ -364,7 +358,19 @@ const dbHelpers = {
             WHERE i.quantity <= i.reorder_level
         `);
         return result.rows;
+    },
+    
+    // Query helper for direct SQL
+    query: async (text, params) => {
+        return await pool.query(text, params);
     }
 };
 
-module.exports = dbHelpers;
+// ============================================
+// EXPORT - Clean single export
+// ============================================
+module.exports = {
+    ...dbHelpers,
+    pool,
+    query: dbHelpers.query
+};
