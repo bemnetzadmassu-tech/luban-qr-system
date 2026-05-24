@@ -746,7 +746,20 @@ var response = await apiCall('/api/barcode/generate', 'POST', JSON.stringify({
         }
         
         // Barcode Functions
+// ============================================
+// COMPLETELY REWRITTEN BARCODE FUNCTIONS - NO FREEZING
+// ============================================
+
+// Simple flag to prevent multiple simultaneous generations
+var isGenerating = false;
+
 async function generatePremiumBarcodes() {
+    // Prevent multiple clicks while generating
+    if (isGenerating) {
+        showAlert('Already generating barcodes. Please wait...', 'warning');
+        return;
+    }
+    
     var weight = document.getElementById('barcode-weight').value;
     var roast = document.getElementById('barcode-roast').value;
     var qty = parseInt(document.getElementById('barcode-qty').value);
@@ -759,29 +772,47 @@ async function generatePremiumBarcodes() {
         return;
     }
     
+    // Limit to reasonable number
+    if (qty > 50) {
+        if (!confirm('Generating ' + qty + ' barcodes may take a while. Continue?')) {
+            return;
+        }
+    }
+    
+    isGenerating = true;
+    
+    // Show loading message
+    var resultDiv = document.getElementById('barcode-result');
+    resultDiv.innerHTML = '<div class="loading" style="text-align:center; padding:40px;">⏳ Generating ' + qty + ' barcodes...<br>Please wait</div>';
+    
     showAlert('Generating ' + qty + ' barcodes...', 'success');
     
     var html = '<h4>📊 Generated Barcodes:</h4>';
     html += '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
     
+    // Generate barcodes one by one with small delays to prevent freezing
     for (var i = 0; i < qty; i++) {
         var serial = Math.random().toString(36).substring(2, 9).toUpperCase();
         var barcodeValue = 'LBN-' + weight + '-' + roast + '-' + serial;
         
         try {
-            // Generate barcode image with timeout
-            var controller = new AbortController();
-            var timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+            // Add small delay between requests to prevent overwhelming the server
+            if (i > 0) {
+                await delay(100);
+            }
             
             var response = await fetch('/api/barcode/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: barcodeValue, barColor: barColor }),
-                signal: controller.signal
+                body: JSON.stringify({ id: barcodeValue, barColor: barColor })
             });
             
-            clearTimeout(timeoutId);
             var data = await response.json();
+            
+            // Show progress
+            if (i % 5 === 0) {
+                resultDiv.innerHTML = '<div class="loading" style="text-align:center; padding:40px;">⏳ Generating barcode ' + (i+1) + ' of ' + qty + '...<br>Please wait</div>';
+            }
             
             // Save to database (don't wait for response)
             fetch('/api/barcode/save', {
@@ -796,28 +827,24 @@ async function generatePremiumBarcodes() {
                 })
             }).catch(function(e) { console.log('Save error:', e); });
             
-            if (data.image) {
+            if (data && data.image) {
                 html += '<div class="code-item" style="text-align:center;">';
                 html += '<img src="' + data.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
                 html += '<div style="font-family:monospace; margin-top:8px;">' + barcodeValue + '</div>';
-                html += '<div style="font-size:10px; color:#28a745;">✅ Barcode generated</div>';
                 html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📋 Copy</button>';
                 html += '</div>';
             } else {
-                // Fallback to text
                 html += '<div class="code-item" style="text-align:center;">';
                 html += '<div style="font-family:monospace; font-size:16px; padding:20px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div>';
-                html += '<div style="font-size:10px; color:#ffc107; margin-top:5px;">⚠️ Text only (image unavailable)</div>';
                 html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📋 Copy</button>';
                 html += '</div>';
             }
             
         } catch (error) {
             console.error('Barcode generation failed:', error);
-            // Fallback to text
             html += '<div class="code-item" style="text-align:center;">';
             html += '<div style="font-family:monospace; font-size:16px; padding:20px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div>';
-            html += '<div style="font-size:10px; color:#dc3545; margin-top:5px;">❌ Generation failed</div>';
+            html += '<div style="font-size:10px; color:#dc3545;">❌ Generation failed</div>';
             html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📋 Copy Text</button>';
             html += '</div>';
         }
@@ -825,19 +852,29 @@ async function generatePremiumBarcodes() {
     
     html += '</div>';
     html += '<div style="margin-top:20px; text-align:center;">';
-    html += '<button onclick="loadSavedBarcodes()" class="btn-secondary">📋 View Saved Barcodes</button>';
+    html += '<button onclick="loadSavedBarcodes()" class="btn-secondary">📋 View Saved</button>';
     html += '<button onclick="exportBarcodesToCSV()" class="btn-secondary" style="margin-left:10px;">📊 Export CSV</button>';
     html += '</div>';
     
-    document.getElementById('barcode-result').innerHTML = html;
+    resultDiv.innerHTML = html;
     showAlert('Generated ' + qty + ' barcodes!', 'success');
+    isGenerating = false;
 }
-// NEW FUNCTION: Load saved barcodes from database
+
+// Helper delay function
+function delay(ms) {
+    return new Promise(function(resolve) {
+        setTimeout(resolve, ms);
+    });
+}
+
+// Load saved barcodes from database
 async function loadSavedBarcodes() {
     showAlert('Loading saved barcodes...', 'success');
     
     try {
-        var data = await apiCall('/api/barcode/list', 'GET');
+        var response = await fetch('/api/barcode/list');
+        var data = await response.json();
         var barcodes = data.barcodes || [];
         
         if (barcodes.length === 0) {
@@ -854,12 +891,10 @@ async function loadSavedBarcodes() {
             var statusText = b.is_sold ? 'Sold' : (b.is_activated ? 'Active' : 'Pending');
             
             html += '<div class="code-item">';
-            html += '<div style="font-family:monospace; font-size:14px;"><strong>' + b.barcode_value + '</strong></div>';
-            html += '<div style="font-size:12px; margin-top:5px;">Product: ' + (b.product_name || 'Coffee Product') + '</div>';
-            html += '<div style="font-size:12px;">Weight: ' + (b.weight_grams || 250) + 'g | Roast: ' + (b.roast_level || 'MR') + '</div>';
+            html += '<div style="font-family:monospace; font-size:14px;"><strong>' + (b.barcode_value || 'N/A') + '</strong></div>';
             html += '<div style="font-size:12px;">Created: ' + new Date(b.created_at).toLocaleDateString() + '</div>';
-            html += '<div style="font-size:12px; color:' + statusColor + ';">Status: ' + statusText + ' | Verifications: ' + (b.verification_count || 0) + '</div>';
-            html += '<button onclick="copyToClipboard(\'' + b.barcode_value + '\')" class="btn-sm" style="margin-top:8px;">📋 Copy Barcode</button>';
+            html += '<div style="font-size:12px; color:' + statusColor + ';">Status: ' + statusText + '</div>';
+            html += '<button onclick="copyToClipboard(\'' + (b.barcode_value || '') + '\')" class="btn-sm" style="margin-top:8px;">📋 Copy</button>';
             html += '</div>';
         }
         
@@ -870,33 +905,36 @@ async function loadSavedBarcodes() {
         showAlert('Error loading saved barcodes', 'error');
     }
 }
-        function downloadBarcode(imageData, barcode) {
-            const a = document.createElement('a');
-            a.href = imageData;
-            a.download = `${barcode}.png`;
-            a.click();
+
+function exportBarcodesToCSV() {
+    var items = document.querySelectorAll('#barcode-result .code-item div[style*="monospace"]');
+    var barcodes = [];
+    for (var i = 0; i < items.length; i++) {
+        var text = items[i].innerText;
+        if (text && text.startsWith('LBN-')) {
+            barcodes.push(text);
         }
-        
-        function exportBarcodesToCSV() {
-            const barcodes = [];
-            document.querySelectorAll('#barcode-result .code-item div[style*="monospace"]').forEach(el => {
-                if (el.innerText) barcodes.push(el.innerText);
-            });
-            if (barcodes.length === 0) { showAlert('No barcodes', 'error'); return; }
-            const csv = "Barcode\n" + barcodes.join("\n");
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `barcodes_${Date.now()}.csv`;
-            a.click();
-            URL.revokeObjectURL(a.href);
-            showAlert(`Exported ${barcodes.length} barcodes`, 'success');
-        }
-        
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            showAlert('Copied!', 'success');
-        }
+    }
+    
+    if (barcodes.length === 0) {
+        showAlert('No barcodes to export', 'error');
+        return;
+    }
+    
+    var csv = 'Barcode\n' + barcodes.join('\n');
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'barcodes_' + Date.now() + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showAlert('Exported ' + barcodes.length + ' barcodes', 'success');
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text);
+    showAlert('Copied to clipboard!', 'success');
+}
         
         // Page Settings
         async function loadPageSelect() {
