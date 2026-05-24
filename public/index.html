@@ -346,7 +346,33 @@
                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
     <h3>Manage QR Codes</h3>
     <button class="btn-secondary" onclick="loadQRCodes()" style="margin-bottom: 15px;">🔄 Refresh</button>
-    
+    <button onclick="showBatchQRGenerator()" class="btn-secondary" style="margin-left: 10px;">📦 Batch Generate QR Codes</button>
+
+<!-- Batch QR Modal -->
+<div id="batchQRModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; padding: 50px;">
+    <div style="background: #1a1a2e; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 20px;">
+        <h3 style="color: #D4AF37;">📦 Batch Generate QR Codes</h3>
+        <div class="form-group">
+            <label>Prefix (e.g., COF, YIR, SID)</label>
+            <input type="text" id="batch-prefix" placeholder="COF">
+        </div>
+        <div class="form-group">
+            <label>Start Number</label>
+            <input type="number" id="batch-start" value="1">
+        </div>
+        <div class="form-group">
+            <label>End Number</label>
+            <input type="number" id="batch-end" value="10">
+        </div>
+        <div class="form-group">
+            <label>Destination URL</label>
+            <input type="url" id="batch-dest" placeholder="https://lubancoffee.et/product/">
+        </div>
+        <button onclick="generateBatchQRs()">🚀 Generate Batch</button>
+        <button onclick="closeBatchModal()" class="btn-secondary">Cancel</button>
+        <div id="batchResult" style="margin-top: 20px; max-height: 300px; overflow-y: auto;"></div>
+    </div>
+</div>
     <!-- NEW: Landing Pages Quick Links -->
     <div style="margin-bottom: 20px; padding: 15px; background: rgba(212,175,55,0.1); border-radius: 12px;">
         <h4 style="color: #D4AF37; margin-bottom: 10px;">📄 Landing Pages Library</h4>
@@ -360,31 +386,36 @@
         </div>
         
         <!-- Barcode Panel -->
-        <div id="barcode-panel" class="panel">
-            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
-                <h3>Generate Premium Barcode</h3>
-                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
-                    <div class="form-group">
-                        <label>Weight (g)</label>
-                        <input type="number" id="barcode-weight" value="250">
-                    </div>
-                    <div class="form-group">
-                        <label>Roast Code</label>
-                        <select id="barcode-roast">
-                            <option value="LR">Light Roast (LR)</option>
-                            <option value="MR" selected>Medium Roast (MR)</option>
-                            <option value="DR">Dark Roast (DR)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Quantity</label>
-                        <input type="number" id="barcode-qty" value="10">
-                    </div>
-                </div>
-                <button onclick="generatePremiumBarcodes()">📊 Generate Barcodes</button>
-                <div id="barcode-result" style="margin-top: 20px;"></div>
+      <!-- Barcode Panel -->
+<div id="barcode-panel" class="panel">
+    <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+        <h3>📊 Generate Premium Barcode</h3>
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Weight (g)</label>
+                <input type="number" id="barcode-weight" value="250">
+            </div>
+            <div class="form-group">
+                <label>Roast Code</label>
+                <select id="barcode-roast">
+                    <option value="LR">Light Roast (LR)</option>
+                    <option value="MR" selected>Medium Roast (MR)</option>
+                    <option value="DR">Dark Roast (DR)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" id="barcode-qty" value="10">
+            </div>
+            <div class="form-group">
+                <label>Barcode Color</label>
+                <input type="color" id="barcode-color" value="#D4AF37">
             </div>
         </div>
+        <button onclick="generatePremiumBarcodes()">📊 Generate Barcodes</button>
+        <div id="barcode-result" style="margin-top: 20px;"></div>
+    </div>
+</div>
         
         <!-- Pages Panel (Dynamic Landing Pages) -->
         <div id="pages-panel" class="panel">
@@ -613,7 +644,162 @@
             a.download = `${name}.png`;
             a.click();
         }
+        // ============================================
+// BATCH QR CODE GENERATION FUNCTIONS
+// ============================================
+
+function showBatchQRGenerator() {
+    document.getElementById('batchQRModal').style.display = 'block';
+}
+
+function closeBatchModal() {
+    document.getElementById('batchQRModal').style.display = 'none';
+}
+
+async function generateBatchQRs() {
+    const prefix = document.getElementById('batch-prefix').value;
+    const start = parseInt(document.getElementById('batch-start').value);
+    const end = parseInt(document.getElementById('batch-end').value);
+    const baseDest = document.getElementById('batch-dest').value;
+    
+    if (!prefix || !start || !end) {
+        showAlert('Please fill all fields', 'error');
+        return;
+    }
+    
+    if (!baseDest) {
+        showAlert('Please enter destination URL', 'error');
+        return;
+    }
+    
+    showAlert(`Generating ${end - start + 1} QR codes...`, 'success');
+    
+    let results = [];
+    const PRIMARY_DOMAIN = window.location.origin;
+    
+    for (let i = start; i <= end; i++) {
+        const id = `${prefix}${String(i).padStart(3, '0')}`;
+        const destinationUrl = `${baseDest}${id}`;
         
+        try {
+            await apiCall('/api/qr/create', { method: 'POST', body: JSON.stringify({ id }) });
+            await apiCall(`/api/qr/update/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ destinationUrl })
+            });
+            
+            const content = `${PRIMARY_DOMAIN}/go/${id}`;
+            const qrData = await apiCall('/api/qr/generate', {
+                method: 'POST',
+                body: JSON.stringify({ content, darkColor: '#D4AF37', lightColor: '#FFFFFF', format: 'png' })
+            });
+            
+            results.push({ id, url: content, image: qrData.image, destination: destinationUrl });
+        } catch(e) {
+            console.error(`Failed to generate ${id}:`, e);
+            showAlert(`Failed to generate ${id}`, 'error');
+        }
+    }
+    
+    displayBatchResults(results);
+}
+
+function displayBatchResults(results) {
+    if (results.length === 0) {
+        document.getElementById('batchResult').innerHTML = '<p style="color: red;">No QR codes generated. Check errors above.</p>';
+        return;
+    }
+    
+    let html = '<h4>✅ Generated QR Codes:</h4>';
+    html += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 400px; overflow-y: auto;">';
+    results.forEach(r => {
+        html += `
+            <div style="border: 1px solid #D4AF37; padding: 10px; border-radius: 8px; text-align: center; background: rgba(0,0,0,0.3);">
+                <img src="${r.image}" style="width: 100px; height: 100px;"><br>
+                <strong style="color: #D4AF37;">${r.id}</strong><br>
+                <small style="font-size: 10px; word-break: break-all;">${r.url}</small><br>
+                <div style="margin-top: 8px;">
+                    <button onclick="downloadQR('${r.image}', '${r.id}')" class="btn-sm" style="margin: 2px;">📥 QR</button>
+                    <button onclick="copyToClipboard('${r.url}')" class="btn-sm" style="margin: 2px;">📋 URL</button>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    html += '<div style="margin-top: 15px; text-align: center;">';
+    html += '<button onclick="exportBatchToPDF()" class="btn-success" style="margin-right: 10px;">📄 Export to PDF</button>';
+    html += '<button onclick="closeBatchModal()" class="btn-secondary">Close</button>';
+    html += '</div>';
+    
+    document.getElementById('batchResult').innerHTML = html;
+    showAlert(`Generated ${results.length} QR codes successfully!`, 'success');
+}
+
+function exportBatchToPDF() {
+    const qrElements = document.querySelectorAll('#batchResult img');
+    if (qrElements.length === 0) {
+        showAlert('No QR codes to export', 'error');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Luban Coffee - Batch QR Codes</title>
+            <style>
+                @page { size: A4; margin: 1cm; }
+                body { font-family: Arial, sans-serif; text-align: center; }
+                .header { margin-bottom: 30px; }
+                .qr-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+                .qr-item { text-align: center; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+                .qr-item img { width: 100px; height: 100px; }
+                .qr-id { font-weight: bold; margin: 10px 0 5px; }
+                .qr-url { font-size: 8px; word-break: break-all; color: #666; }
+                .footer { margin-top: 30px; font-size: 10px; color: #999; }
+                @media print {
+                    .qr-item { border: none; page-break-inside: avoid; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>☕ LUBAN COFFEE - QR Codes</h2>
+                <p>Scan to verify authenticity</p>
+                <hr>
+            </div>
+            <div class="qr-grid" id="qrGrid"></div>
+            <div class="footer">Generated: ${new Date().toLocaleString()}</div>
+        </body>
+        </html>
+    `);
+    
+    let gridHtml = '';
+    const qrImages = document.querySelectorAll('#batchResult img');
+    const qrIds = document.querySelectorAll('#batchResult strong');
+    
+    for (let i = 0; i < qrImages.length; i++) {
+        const imgSrc = qrImages[i].src;
+        const id = qrIds[i]?.innerText || `QR${i+1}`;
+        gridHtml += `
+            <div class="qr-item">
+                <img src="${imgSrc}" alt="QR Code">
+                <div class="qr-id">${id}</div>
+                <div class="qr-url">${window.location.origin}/go/${id}</div>
+            </div>
+        `;
+    }
+    
+    printWindow.document.getElementById('qrGrid').innerHTML = gridHtml;
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text);
+    showAlert('Copied to clipboard!', 'success');
+}
                 // ============================================
         // LANDING PAGES LIBRARY
         // ============================================
@@ -750,25 +936,171 @@
             }
         }
         
-        async function generatePremiumBarcodes() {
-            const weight = document.getElementById('barcode-weight').value;
-            const roast = document.getElementById('barcode-roast').value;
-            const qty = parseInt(document.getElementById('barcode-qty').value);
-            
-            const barcodes = [];
-            for (let i = 0; i < qty; i++) {
-                const serial = Math.random().toString(36).substr(2, 7).toUpperCase();
-                barcodes.push(`LBN-${weight}-${roast}-${serial}`);
-            }
-            
-            let html = '<h4>Generated Barcodes:</h4><div style="display: flex; flex-wrap: wrap; gap: 10px;">';
-            barcodes.forEach(b => {
-                html += `<div class="code-item" style="font-family: monospace;">${b}</div>`;
+     async function generatePremiumBarcodes() {
+    const weight = document.getElementById('barcode-weight').value;
+    const roast = document.getElementById('barcode-roast').value;
+    const qty = parseInt(document.getElementById('barcode-qty').value);
+    
+    if (!qty || qty < 1) {
+        showAlert('Enter valid quantity', 'error');
+        return;
+    }
+    
+    showAlert(`Generating ${qty} barcodes...`, 'success');
+    
+    const barcodes = [];
+    for (let i = 0; i < qty; i++) {
+        const serial = Math.random().toString(36).substring(2, 9).toUpperCase();
+        const barcodeValue = `LBN-${weight}-${roast}-${serial}`;
+        barcodes.push(barcodeValue);
+    }
+    
+    // Generate actual barcode images using your API
+    let html = '<h4>📊 Generated Barcodes:</h4>';
+    html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">';
+    
+    for (const barcode of barcodes) {
+        try {
+            // Call your backend to generate barcode image
+            const response = await apiCall('/api/barcode/generate', {
+                method: 'POST',
+                body: JSON.stringify({ id: barcode, barColor: '#D4AF37' })
             });
-            html += '</div>';
-            document.getElementById('barcode-result').innerHTML = html;
-            showAlert(`Generated ${qty} barcodes!`, 'success');
+            
+            html += `
+                <div class="code-item" style="text-align: center;">
+                    <img src="${response.image}" style="max-width: 200px; background: white; padding: 10px; border-radius: 8px;">
+                    <div style="font-family: monospace; margin-top: 8px; font-size: 12px;">${barcode}</div>
+                    <button onclick="downloadBarcode('${response.image}', '${barcode}')" class="btn-sm" style="margin-top: 5px;">📥 Download</button>
+                </div>
+            `;
+        } catch (error) {
+            // Fallback: show text only if API fails
+            html += `
+                <div class="code-item" style="text-align: center;">
+                    <div style="font-family: monospace; font-size: 16px; padding: 20px;">${barcode}</div>
+                    <button onclick="copyToClipboard('${barcode}')" class="btn-sm">📋 Copy</button>
+                </div>
+            `;
         }
+    }
+    
+    html += '</div>';
+    
+    // Add export options
+    html += `
+        <div style="margin-top: 20px; text-align: center;">
+            <button onclick="exportBarcodesToPDF()" class="btn-success">📄 Export to PDF</button>
+            <button onclick="copyAllBarcodes()" class="btn-secondary">📋 Copy All</button>
+        </div>
+    `;
+    
+    document.getElementById('barcode-result').innerHTML = html;
+    showAlert(`Generated ${barcodes.length} barcodes with images!`, 'success');
+}
+
+function downloadBarcode(imageData, barcode) {
+    const a = document.createElement('a');
+    a.href = imageData;
+    a.download = `${barcode}.png`;
+    a.click();
+}
+
+function copyAllBarcodes() {
+    const barcodeTexts = [];
+    document.querySelectorAll('#barcode-result .code-item').forEach(item => {
+        const text = item.querySelector('div[style*="monospace"]')?.innerText;
+        if (text) barcodeTexts.push(text);
+    });
+    
+    if (barcodeTexts.length > 0) {
+        navigator.clipboard.writeText(barcodeTexts.join('\n'));
+        showAlert(`Copied ${barcodeTexts.length} barcodes to clipboard!`, 'success');
+    }
+}
+
+function exportBarcodesToPDF() {
+    const barcodeElements = document.querySelectorAll('#barcode-result .code-item');
+    if (barcodeElements.length === 0) {
+        showAlert('No barcodes to export', 'error');
+        return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Luban Coffee - Barcodes Print Sheet</title>
+            <style>
+                @page {
+                    size: A4;
+                    margin: 1cm;
+                }
+                body {
+                    font-family: Arial, sans-serif;
+                    padding: 20px;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 30px;
+                }
+                .barcode-grid {
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    gap: 20px;
+                }
+                .barcode-item {
+                    text-align: center;
+                    border: 1px solid #ddd;
+                    padding: 15px;
+                    border-radius: 8px;
+                    page-break-inside: avoid;
+                }
+                .barcode-item img {
+                    max-width: 250px;
+                }
+                .barcode-text {
+                    font-family: monospace;
+                    margin-top: 10px;
+                    font-size: 12px;
+                }
+                @media print {
+                    .barcode-item {
+                        border: none;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>☕ LUBAN COFFEE - Product Barcodes</h2>
+                <p>Scan for inventory and POS tracking</p>
+                <hr>
+            </div>
+            <div class="barcode-grid" id="barcodeGrid"></div>
+        </body>
+        </html>
+    `);
+    
+    let gridHtml = '';
+    barcodeElements.forEach(el => {
+        const img = el.querySelector('img');
+        const text = el.querySelector('div[style*="monospace"]')?.innerText || '';
+        if (img) {
+            gridHtml += `
+                <div class="barcode-item">
+                    <img src="${img.src}" alt="Barcode">
+                    <div class="barcode-text">${text}</div>
+                </div>
+            `;
+        }
+    });
+    
+    printWindow.document.getElementById('barcodeGrid').innerHTML = gridHtml;
+    printWindow.document.close();
+    printWindow.print();
+}
         
         async function loadPageSelect() {
             try {
