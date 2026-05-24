@@ -446,53 +446,47 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
         </div>
     </div>
     
-    <script>
-        // Data storage
-        let qrCodes = [];
-        let productsDB = [
-            { id: 'COF001', name: 'Yirgacheffe Light Roast', price: 24.99, stock: 450, origin: 'Yirgacheffe', roast: 'Light' },
-            { id: 'COF002', name: 'Sidama Medium Roast', price: 22.99, stock: 320, origin: 'Sidama', roast: 'Medium' },
-            { id: 'COF003', name: 'Guji Dark Roast', price: 26.99, stock: 280, origin: 'Guji', roast: 'Dark' }
-        ];
-        
+       <script>
+        // ============================================
+        // REAL API CONNECTION - PostgreSQL Backend
+        // ============================================
+        const API_BASE = '';
         let cart = [];
         let scanChart = null;
         let currentEditingQRId = null;
         
-        // Load saved data
-        function loadData() {
-            const saved = localStorage.getItem('luban_qr_codes');
-            if (saved) qrCodes = JSON.parse(saved);
-            const savedProducts = localStorage.getItem('luban_products');
-            if (savedProducts) productsDB = JSON.parse(savedProducts);
-        }
-        
-        function saveData() {
-            localStorage.setItem('luban_qr_codes', JSON.stringify(qrCodes));
-            localStorage.setItem('luban_products', JSON.stringify(productsDB));
-        }
-        
-        function showAlert(message, type) {
+        function showAlert(message, type = 'success') {
             const container = document.getElementById('alert-container');
-            container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
-            setTimeout(function() { container.innerHTML = ''; }, 3000);
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => container.innerHTML = '', 3000);
+        }
+        
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', ...options.headers }
+                });
+                const data = await response.json();
+                if (!response.ok && !data.success) throw new Error(data.error || 'API Error');
+                return data;
+            } catch (error) {
+                showAlert(error.message, 'error');
+                throw error;
+            }
         }
         
         // Navigation
         function showPanel(panelName) {
-            var panels = document.querySelectorAll('.panel');
-            for (var i = 0; i < panels.length; i++) {
-                panels[i].classList.remove('active');
-            }
-            var navItems = document.querySelectorAll('.nav-item');
-            for (var i = 0; i < navItems.length; i++) {
-                navItems[i].classList.remove('active');
-            }
-            document.getElementById(panelName + '-panel').classList.add('active');
-            var activeNav = document.querySelector('.nav-item[data-panel="' + panelName + '"]');
-            if (activeNav) activeNav.classList.add('active');
+            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.getElementById(`${panelName}-panel`).classList.add('active');
+            document.querySelector(`.nav-item[data-panel="${panelName}"]`).classList.add('active');
             
-            var titles = { dashboard: 'Dashboard', qr: 'QR Code Manager', barcode: 'Barcode Generator', pages: 'Landing Page Manager', products: 'Product Manager', pos: 'POS Terminal', analytics: 'Analytics' };
+            const titles = {
+                dashboard: 'Dashboard', qr: 'QR Code Manager', barcode: 'Barcode Generator',
+                pages: 'Landing Page Manager', products: 'Product Manager', pos: 'POS Terminal', analytics: 'Analytics'
+            };
             document.getElementById('page-title').innerText = titles[panelName] || panelName;
             
             if (panelName === 'dashboard') loadDashboard();
@@ -502,172 +496,209 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
             if (panelName === 'analytics') loadAnalytics();
         }
         
-        // Attach click handlers
-        var navItems = document.querySelectorAll('.nav-item');
-        for (var i = 0; i < navItems.length; i++) {
-            navItems[i].addEventListener('click', function(e) {
-                var panel = this.getAttribute('data-panel');
+        // Attach navigation handlers
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const panel = item.getAttribute('data-panel');
                 if (panel) showPanel(panel);
             });
-        }
+        });
         
         // Dashboard
-        function loadDashboard() {
-            var totalScans = 0;
-            for (var i = 0; i < qrCodes.length; i++) {
-                totalScans += qrCodes[i].scan_count || 0;
+        async function loadDashboard() {
+            try {
+                const data = await apiCall('/api/qr/list');
+                const codes = data.codes || [];
+                let totalScans = codes.reduce((s, c) => s + (c.scan_count || 0), 0);
+                document.getElementById('total-qr').innerText = codes.length;
+                document.getElementById('total-scans').innerText = totalScans;
+                document.getElementById('active-products').innerText = codes.filter(c => c.page_type === 'product').length;
+                document.getElementById('inventory-stock').innerText = '1,250';
+                
+                let recentHtml = '';
+                codes.slice(0, 5).forEach(c => {
+                    recentHtml += `<div class="code-item">
+                        <strong>${c.id}</strong><br>
+                        🎯 ${c.destination_url || c.product_name || 'Not set'}<br>
+                        📊 ${c.scan_count || 0} scans
+                    </div>`;
+                });
+                document.getElementById('recent-codes').innerHTML = recentHtml || '<p>No QR codes yet</p>';
+                
+                const ctx = document.getElementById('scanChart').getContext('2d');
+                if (scanChart) scanChart.destroy();
+                scanChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: codes.slice(0, 8).map(c => c.id),
+                        datasets: [{ label: 'Scans', data: codes.slice(0, 8).map(c => c.scan_count || 0), backgroundColor: '#D4AF37', borderRadius: 8 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } } }
+                });
+            } catch (error) {
+                console.error('Dashboard error:', error);
             }
-            document.getElementById('total-qr').innerText = qrCodes.length;
-            document.getElementById('total-scans').innerText = totalScans;
-            var productCount = 0;
-            for (var i = 0; i < qrCodes.length; i++) {
-                if (qrCodes[i].page_type === 'product') productCount++;
-            }
-            document.getElementById('active-products').innerText = productCount;
-            var totalStock = 0;
-            for (var i = 0; i < productsDB.length; i++) {
-                totalStock += productsDB[i].stock || 0;
-            }
-            document.getElementById('inventory-stock').innerText = totalStock;
-            
-            var recentHtml = '';
-            for (var i = 0; i < Math.min(5, qrCodes.length); i++) {
-                var c = qrCodes[i];
-                var dest = c.destination_url || c.product_name || 'Not set';
-                recentHtml += '<div class="code-item"><strong>' + c.id + '</strong><br>🎯 ' + dest + '<br>📊 ' + (c.scan_count || 0) + ' scans</div>';
-            }
-            document.getElementById('recent-codes').innerHTML = recentHtml || '<p>No QR codes yet</p>';
-            
-            var ctx = document.getElementById('scanChart').getContext('2d');
-            if (scanChart) scanChart.destroy();
-            var labels = [];
-            var data = [];
-            for (var i = 0; i < Math.min(8, qrCodes.length); i++) {
-                labels.push(qrCodes[i].id);
-                data.push(qrCodes[i].scan_count || 0);
-            }
-            scanChart = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: labels, datasets: [{ label: 'Scans', data: data, backgroundColor: '#D4AF37', borderRadius: 8 }] },
-                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } } }
-            });
         }
         
         // QR Functions
-        function generateQR() {
-            var id = document.getElementById('qr-id').value.trim();
-            var destinationUrl = document.getElementById('qr-dest').value;
+        async function generateQR() {
+            const id = document.getElementById('qr-id').value.trim();
+            const destinationUrl = document.getElementById('qr-dest').value;
+            const darkColor = document.getElementById('qr-dark').value;
+            const lightColor = document.getElementById('qr-light').value;
+            
             if (!id) { showAlert('Enter QR Code ID', 'error'); return; }
             
-            var exists = false;
-            for (var i = 0; i < qrCodes.length; i++) {
-                if (qrCodes[i].id === id) { exists = true; break; }
-            }
-            if (!exists) {
-                qrCodes.push({ id: id, scan_count: 0, destination_url: '', page_type: 'redirect' });
-            }
-            if (destinationUrl) {
-                for (var i = 0; i < qrCodes.length; i++) {
-                    if (qrCodes[i].id === id) {
-                        qrCodes[i].destination_url = destinationUrl;
-                        qrCodes[i].page_type = 'redirect';
-                        break;
-                    }
+            try {
+                showAlert('Creating QR code...', 'success');
+                await apiCall('/api/qr/create', { method: 'POST', body: JSON.stringify({ id }) });
+                
+                if (destinationUrl) {
+                    await apiCall(`/api/qr/update/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ destinationUrl })
+                    });
                 }
+                
+                const content = `${window.location.origin}/api/r/${id}`;
+                const qrData = await apiCall('/api/qr/generate', {
+                    method: 'POST',
+                    body: JSON.stringify({ content, darkColor, lightColor, format: 'png' })
+                });
+                
+                document.getElementById('qr-result').innerHTML = `
+                    <img src="${qrData.image}" style="max-width: 150px; border-radius: 12px; background: white; padding: 10px;"><br>
+                    <strong>${id}</strong><br>
+                    <small>${content}</small><br>
+                    <button class="btn-secondary" onclick="downloadQR('${qrData.image}', '${id}')" style="margin-top: 10px;">📥 Download</button>
+                `;
+                showAlert(`QR Code ${id} generated successfully!`, 'success');
+                loadQRCodes();
+                loadPageSelect();
+                loadDashboard();
+            } catch (error) {
+                console.error('QR generation error:', error);
             }
-            saveData();
-            var content = window.location.origin + '/api/r/' + id;
-            var imgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(content);
-            document.getElementById('qr-result').innerHTML = '<div style="background:#fff; padding:10px; border-radius:12px;"><img src="' + imgUrl + '" style="max-width:150px;"><br><strong>' + id + '</strong><br><small>' + content + '</small><br><button class="btn-secondary" onclick="alert(\'QR saved\')">📥 Download</button></div>';
-            showAlert('QR Code ' + id + ' generated!', 'success');
-            loadQRCodes();
-            loadPageSelect();
-            loadDashboard();
         }
         
-        function loadQRCodes() {
-            var html = '';
-            for (var i = 0; i < qrCodes.length; i++) {
-                var code = qrCodes[i];
-                var destDisplay = code.page_type === 'product' ? '🛍️ ' + (code.product_name || 'Product') : (code.destination_url || 'Not set');
-                html += '<div class="code-item"><strong>📱 ' + code.id + '</strong>';
-                html += '<div style="color:#D4AF37;">🎯 ' + destDisplay + '</div>';
-                html += '<div>📊 Scans: ' + (code.scan_count || 0) + '</div>';
-                html += '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">';
-                html += '<input type="text" id="edit-' + code.id + '" placeholder="New URL" style="flex:2; padding:6px;">';
-                html += '<button onclick="setCurrentEditingQR(\'' + code.id + '\')" style="background:#D4AF37; color:#000; padding:6px 12px;">📄 Select</button>';
-                html += '<button onclick="updateQR(\'' + code.id + '\')" style="background:#667eea; padding:6px 12px;">Update</button>';
-                html += '<button onclick="deleteQR(\'' + code.id + '\')" style="background:#dc3545; padding:6px 12px;">Delete</button>';
-                html += '</div><div style="font-size:11px;">💡 Click "Select" then landing page above</div></div>';
+        function downloadQR(img, name) {
+            const a = document.createElement('a');
+            a.href = img;
+            a.download = `${name}.png`;
+            a.click();
+        }
+        
+        async function loadQRCodes() {
+            try {
+                const data = await apiCall('/api/qr/list');
+                let html = '';
+                for (const code of (data.codes || [])) {
+                    const destDisplay = code.page_type === 'product' 
+                        ? `🛍️ ${code.product_name || 'Product'}` 
+                        : (code.destination_url || 'Not set');
+                    
+                    html += `<div class="code-item">
+                        <strong>📱 ${code.id}</strong>
+                        <div style="color: #D4AF37;">🎯 ${destDisplay}</div>
+                        <div>📊 Scans: ${code.scan_count || 0}</div>
+                        <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                            <input type="text" id="edit-${code.id}" placeholder="New URL" style="flex: 2; padding: 6px;">
+                            <button onclick="setCurrentEditingQR('${code.id}')" style="background: #D4AF37; color: #000; padding: 6px 12px;">📄 Select</button>
+                            <button onclick="updateQR('${code.id}')" style="background: #667eea; padding: 6px 12px;">Update</button>
+                            <button onclick="deleteQR('${code.id}')" style="background: #dc3545; padding: 6px 12px;">Delete</button>
+                        </div>
+                        <div style="font-size: 11px;">💡 Click "Select" then choose a landing page above</div>
+                    </div>`;
+                }
+                document.getElementById('qr-list').innerHTML = html || '<p>No QR codes yet. Generate one!</p>';
+            } catch (error) {
+                console.error('Load QR error:', error);
             }
-            document.getElementById('qr-list').innerHTML = html || '<p>No QR codes yet. Generate one!</p>';
         }
         
         function setCurrentEditingQR(id) {
             currentEditingQRId = id;
-            showAlert('✏️ Editing: ' + id + '. Click any landing page.', 'success');
-        }
-        
-        function updateQR(id) {
-            var newUrl = document.getElementById('edit-' + id).value;
-            if (!newUrl) { showAlert('Enter URL', 'error'); return; }
-            for (var i = 0; i < qrCodes.length; i++) {
-                if (qrCodes[i].id === id) {
-                    qrCodes[i].destination_url = newUrl;
-                    qrCodes[i].page_type = 'redirect';
-                    break;
+            showAlert(`✏️ Now editing: ${id}. Click any landing page above.`, 'success');
+            
+            document.querySelectorAll('.code-item').forEach(el => {
+                el.style.borderLeft = '3px solid rgba(255,255,255,0.2)';
+                el.style.background = 'rgba(255,255,255,0.05)';
+            });
+            const items = document.querySelectorAll('.code-item');
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].innerText.includes(id)) {
+                    items[i].style.borderLeft = '3px solid #D4AF37';
+                    items[i].style.background = 'rgba(212,175,55,0.15)';
                 }
             }
-            saveData();
-            showAlert('Updated ' + id, 'success');
-            loadQRCodes();
-            loadPageSelect();
         }
         
-        function deleteQR(id) {
-            if (!confirm('Delete ' + id + ' permanently?')) return;
-            var newCodes = [];
-            for (var i = 0; i < qrCodes.length; i++) {
-                if (qrCodes[i].id !== id) newCodes.push(qrCodes[i]);
+        async function updateQR(id) {
+            const newUrl = document.getElementById(`edit-${id}`).value;
+            if (!newUrl) { showAlert('Enter a URL', 'error'); return; }
+            try {
+                await apiCall(`/api/qr/update/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ destinationUrl: newUrl })
+                });
+                showAlert(`Updated ${id}`, 'success');
+                loadQRCodes();
+                loadPageSelect();
+            } catch (error) {
+                console.error('Update error:', error);
             }
-            qrCodes = newCodes;
-            saveData();
-            showAlert('Deleted ' + id, 'success');
-            loadQRCodes();
-            loadDashboard();
-            loadPageSelect();
         }
         
-        // Landing Pages
-        var landingPages = [
+        async function deleteQR(id) {
+            if (!confirm(`Delete ${id} permanently?`)) return;
+            try {
+                await apiCall(`/api/qr/delete/${id}`, { method: 'DELETE' });
+                showAlert(`Deleted ${id}`, 'success');
+                loadQRCodes();
+                loadDashboard();
+                loadPageSelect();
+            } catch (error) {
+                console.error('Delete error:', error);
+            }
+        }
+        
+        // Landing Pages Library
+        const landingPages = [
             { name: '🏠 Home Page', url: '/' },
             { name: '🛒 Shop All', url: '/shop.html' },
+            { name: '📖 Our Story', url: '/about.html' },
             { name: '🌿 Yirgacheffe', url: '/product/yirgacheffe.html' },
             { name: '🌱 Sidama', url: '/product/sidama.html' },
+            { name: '⛰️ Guji', url: '/product/guji.html' },
             { name: '☕ Brewing Guide', url: '/brew-guide.html' },
-            { name: '📷 Instagram', url: 'https://instagram.com/lubancoffee' }
+            { name: '⭐ Loyalty Rewards', url: '/loyalty.html' },
+            { name: '📷 Instagram', url: 'https://instagram.com/lubancoffee' },
+            { name: '👍 Facebook', url: 'https://facebook.com/lubancoffee' }
         ];
         
         function loadLandingPages() {
-            var container = document.getElementById('landing-pages-list');
+            const container = document.getElementById('landing-pages-list');
             if (!container) return;
-            var html = '';
-            for (var i = 0; i < landingPages.length; i++) {
-                html += '<div onclick="applyLandingPage(\'' + landingPages[i].url + '\')" style="background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-block; margin:3px;">' + landingPages[i].name + '</div>';
-            }
+            let html = '';
+            landingPages.forEach(page => {
+                html += `<div onclick="applyLandingPage('${page.url}')" style="background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-block; margin:3px;">${page.name}</div>`;
+            });
             container.innerHTML = html;
         }
         
         function applyLandingPage(url) {
             if (currentEditingQRId) {
-                var input = document.getElementById('edit-' + currentEditingQRId);
+                const input = document.getElementById(`edit-${currentEditingQRId}`);
                 if (input) {
                     input.value = url;
-                    showAlert('Applied to ' + currentEditingQRId, 'success');
+                    showAlert(`✅ Applied to ${currentEditingQRId}`, 'success');
                 }
             } else {
-                document.getElementById('qr-dest').value = url;
-                showAlert('URL applied to generation field', 'success');
+                const destField = document.getElementById('qr-dest');
+                if (destField) {
+                    destField.value = url;
+                    showAlert('✅ URL applied to generation field', 'success');
+                }
             }
         }
         
@@ -675,78 +706,95 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
         function showBatchQRGenerator() { document.getElementById('batchQRModal').style.display = 'block'; }
         function closeBatchModal() { document.getElementById('batchQRModal').style.display = 'none'; }
         
-        function generateBatchQRs() {
-            var prefix = document.getElementById('batch-prefix').value;
-            var start = parseInt(document.getElementById('batch-start').value);
-            var end = parseInt(document.getElementById('batch-end').value);
-            var baseDest = document.getElementById('batch-dest').value;
-            if (!prefix || isNaN(start) || isNaN(end) || !baseDest) { showAlert('Fill all fields', 'error'); return; }
+        async function generateBatchQRs() {
+            const prefix = document.getElementById('batch-prefix').value;
+            const start = parseInt(document.getElementById('batch-start').value);
+            const end = parseInt(document.getElementById('batch-end').value);
+            const baseDest = document.getElementById('batch-dest').value;
             
-            for (var i = start; i <= end; i++) {
-                var id = prefix + String(i).padStart(3, '0');
-                var exists = false;
-                for (var j = 0; j < qrCodes.length; j++) {
-                    if (qrCodes[j].id === id) { exists = true; qrCodes[j].destination_url = baseDest + id; break; }
-                }
-                if (!exists) {
-                    qrCodes.push({ id: id, scan_count: 0, destination_url: baseDest + id, page_type: 'redirect' });
+            if (!prefix || !start || !end || !baseDest) {
+                showAlert('Please fill all fields', 'error');
+                return;
+            }
+            
+            showAlert(`Generating ${end - start + 1} QR codes...`, 'success');
+            
+            for (let i = start; i <= end; i++) {
+                const id = `${prefix}${String(i).padStart(3, '0')}`;
+                const destinationUrl = `${baseDest}${id}`;
+                try {
+                    await apiCall('/api/qr/create', { method: 'POST', body: JSON.stringify({ id }) });
+                    await apiCall(`/api/qr/update/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ destinationUrl })
+                    });
+                } catch(e) {
+                    console.error(`Failed to generate ${id}:`, e);
                 }
             }
-            saveData();
-            showAlert('Generated ' + (end - start + 1) + ' QR codes!', 'success');
+            
+            showAlert(`Generated ${end - start + 1} QR codes!`, 'success');
             loadQRCodes();
             loadPageSelect();
             closeBatchModal();
         }
         
         // Barcode Functions
-        function generatePremiumBarcodes() {
-            var weight = document.getElementById('barcode-weight').value;
-            var roast = document.getElementById('barcode-roast').value;
-            var qty = parseInt(document.getElementById('barcode-qty').value);
+        async function generatePremiumBarcodes() {
+            const weight = document.getElementById('barcode-weight').value;
+            const roast = document.getElementById('barcode-roast').value;
+            const qty = parseInt(document.getElementById('barcode-qty').value);
+            const barColor = document.getElementById('barcode-color').value;
+            
             if (!qty) { showAlert('Enter quantity', 'error'); return; }
             
-            var html = '<h4>📊 Generated Barcodes:</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
-            for (var i = 0; i < qty; i++) {
-                var serial = Math.random().toString(36).substring(2, 9).toUpperCase();
-                var barcodeValue = 'LBN-' + weight + '-' + roast + '-' + serial;
-                html += '<div class="code-item" style="text-align:center;"><div style="font-family:monospace; font-size:16px; padding:10px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div><div style="margin-top:5px;"><button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy</button></div></div>';
+            showAlert(`Generating ${qty} barcodes...`, 'success');
+            
+            let html = '<h4>📊 Generated Barcodes:</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
+            
+            for (let i = 0; i < qty; i++) {
+                const serial = Math.random().toString(36).substring(2, 9).toUpperCase();
+                const barcodeValue = `LBN-${weight}-${roast}-${serial}`;
+                
+                try {
+                    const response = await apiCall('/api/barcode/generate', {
+                        method: 'POST',
+                        body: JSON.stringify({ id: barcodeValue, barColor: barColor })
+                    });
+                    html += `<div class="code-item" style="text-align:center;">
+                        <img src="${response.image}" style="max-width:200px; background:white; padding:10px; border-radius:8px;">
+                        <div style="font-family:monospace; margin-top:8px;">${barcodeValue}</div>
+                        <button onclick="downloadBarcode('${response.image}', '${barcodeValue}')" class="btn-sm">📥 Download</button>
+                    </div>`;
+                } catch(e) {
+                    html += `<div class="code-item" style="text-align:center;"><div style="font-family:monospace; padding:20px;">${barcodeValue}</div><button onclick="copyToClipboard('${barcodeValue}')" class="btn-sm">📋 Copy</button></div>`;
+                }
             }
-            html += '</div>';
+            html += '</div><div style="margin-top:15px; text-align:center;"><button onclick="exportBarcodesToCSV()" class="btn-success">📊 Export CSV</button></div>';
             document.getElementById('barcode-result').innerHTML = html;
-            showAlert(qty + ' barcodes generated!', 'success');
+        }
+        
+        function downloadBarcode(imageData, barcode) {
+            const a = document.createElement('a');
+            a.href = imageData;
+            a.download = `${barcode}.png`;
+            a.click();
         }
         
         function exportBarcodesToCSV() {
-            var items = document.querySelectorAll('#barcode-result .code-item div[style*="monospace"]');
-            var barcodes = [];
-            for (var i = 0; i < items.length; i++) {
-                barcodes.push(items[i].innerText);
-            }
+            const barcodes = [];
+            document.querySelectorAll('#barcode-result .code-item div[style*="monospace"]').forEach(el => {
+                if (el.innerText) barcodes.push(el.innerText);
+            });
             if (barcodes.length === 0) { showAlert('No barcodes', 'error'); return; }
-            var csv = "Barcode\n" + barcodes.join("\n");
-            var blob = new Blob([csv], { type: 'text/csv' });
-            var a = document.createElement('a');
+            const csv = "Barcode\n" + barcodes.join("\n");
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = 'barcodes_' + Date.now() + '.csv';
+            a.download = `barcodes_${Date.now()}.csv`;
             a.click();
             URL.revokeObjectURL(a.href);
-            showAlert('Exported ' + barcodes.length + ' barcodes', 'success');
-        }
-        
-        function printWithCropMarks() {
-            var barcodeDivs = document.querySelectorAll('#barcode-result .code-item');
-            if (barcodeDivs.length === 0) { showAlert('No barcodes to print', 'error'); return; }
-            var win = window.open('', '_blank');
-            win.document.write('<html><head><title>Print Labels</title><style>body{font-family:Arial;padding:20px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}.item{border:1px solid #ccc;padding:15px;text-align:center}</style></head><body><div class="grid">');
-            for (var i = 0; i < barcodeDivs.length; i++) {
-                var textEl = barcodeDivs[i].querySelector('div[style*="monospace"]');
-                var text = textEl ? textEl.innerText : 'LBN';
-                win.document.write('<div class="item"><div style="font-size:18px;font-weight:bold;">☕ LUBAN</div><div style="font-family:monospace;margin:10px 0;">' + text + '</div><div>Scan for authenticity</div></div>');
-            }
-            win.document.write('</div></body></html>');
-            win.document.close();
-            win.print();
+            showAlert(`Exported ${barcodes.length} barcodes`, 'success');
         }
         
         function copyToClipboard(text) {
@@ -755,128 +803,136 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
         }
         
         // Page Settings
-        function loadPageSelect() {
-            var html = '<option value="">-- Select QR Code --</option>';
-            for (var i = 0; i < qrCodes.length; i++) {
-                html += '<option value="' + qrCodes[i].id + '">' + qrCodes[i].id + '</option>';
+        async function loadPageSelect() {
+            try {
+                const data = await apiCall('/api/qr/list');
+                let html = '<option value="">-- Select QR Code --</option>';
+                (data.codes || []).forEach(c => html += `<option value="${c.id}">${c.id}</option>`);
+                document.getElementById('page-qr-select').innerHTML = html;
+            } catch (error) {
+                console.error('Load page select error:', error);
             }
-            document.getElementById('page-qr-select').innerHTML = html;
         }
         
-        function loadPageData() {
-            var qrId = document.getElementById('page-qr-select').value;
+        async function loadPageData() {
+            const qrId = document.getElementById('page-qr-select').value;
             if (!qrId) { document.getElementById('page-editor').style.display = 'none'; return; }
-            var code = null;
-            for (var i = 0; i < qrCodes.length; i++) {
-                if (qrCodes[i].id === qrId) { code = qrCodes[i]; break; }
-            }
-            if (code) {
-                document.getElementById('page-type').value = code.page_type === 'product' ? 'product' : 'redirect';
-                document.getElementById('page-destination').value = code.destination_url || '';
-                document.getElementById('product-name').value = code.product_name || '';
-                document.getElementById('product-price').value = code.product_price || '';
-                document.getElementById('product-desc').value = code.product_description || '';
+            try {
+                const data = await apiCall(`/api/qr/product/${qrId}`);
+                const product = data.product || {};
+                document.getElementById('page-type').value = product.page_type === 'product' ? 'product' : 'redirect';
+                document.getElementById('page-destination').value = product.destination_url || '';
+                document.getElementById('product-name').value = product.product_name || '';
+                document.getElementById('product-price').value = product.product_price || '';
+                document.getElementById('product-desc').value = product.product_description || '';
                 togglePageFields();
                 document.getElementById('page-editor').style.display = 'block';
+            } catch (error) {
+                console.error('Load page data error:', error);
             }
         }
         
         function togglePageFields() {
-            var type = document.getElementById('page-type').value;
+            const type = document.getElementById('page-type').value;
             document.getElementById('redirect-fields').style.display = type === 'redirect' ? 'block' : 'none';
             document.getElementById('product-fields').style.display = type === 'product' ? 'block' : 'none';
         }
         
-        function savePageSettings() {
-            var qrId = document.getElementById('page-qr-select').value;
-            var type = document.getElementById('page-type').value;
+        async function savePageSettings() {
+            const qrId = document.getElementById('page-qr-select').value;
+            const type = document.getElementById('page-type').value;
             if (!qrId) { showAlert('Select a QR code', 'error'); return; }
-            
-            for (var i = 0; i < qrCodes.length; i++) {
-                if (qrCodes[i].id === qrId) {
-                    if (type === 'redirect') {
-                        var dest = document.getElementById('page-destination').value;
-                        if (!dest) { showAlert('Enter destination URL', 'error'); return; }
-                        qrCodes[i].destination_url = dest;
-                        qrCodes[i].page_type = 'redirect';
-                        delete qrCodes[i].product_name;
-                        delete qrCodes[i].product_price;
-                        delete qrCodes[i].product_description;
-                    } else {
-                        var name = document.getElementById('product-name').value;
-                        if (!name) { showAlert('Enter product name', 'error'); return; }
-                        qrCodes[i].page_type = 'product';
-                        qrCodes[i].product_name = name;
-                        qrCodes[i].product_price = parseFloat(document.getElementById('product-price').value);
-                        qrCodes[i].product_description = document.getElementById('product-desc').value;
-                        qrCodes[i].destination_url = '';
-                    }
-                    break;
+            try {
+                if (type === 'redirect') {
+                    const destination = document.getElementById('page-destination').value;
+                    if (!destination) { showAlert('Enter destination URL', 'error'); return; }
+                    await apiCall(`/api/qr/update/${qrId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ destinationUrl: destination })
+                    });
+                    showAlert(`QR code ${qrId} now redirects to ${destination}`, 'success');
+                } else {
+                    const productName = document.getElementById('product-name').value;
+                    const productPrice = parseFloat(document.getElementById('product-price').value);
+                    const productDesc = document.getElementById('product-desc').value;
+                    if (!productName) { showAlert('Enter product name', 'error'); return; }
+                    await apiCall(`/api/qr/update-product/${qrId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ productName, productPrice, productDescription: productDesc })
+                    });
+                    showAlert(`Product page saved for ${qrId}`, 'success');
                 }
+                loadPageSelect();
+                loadQRCodes();
+            } catch (error) {
+                console.error('Save page error:', error);
             }
-            saveData();
-            showAlert('Saved ' + qrId, 'success');
-            loadQRCodes();
-            loadPageSelect();
         }
         
         // Products
-        function loadProducts() {
-            var html = '<table class="data-table"><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Origin</th><th>Roast</th></tr>';
-            for (var i = 0; i < productsDB.length; i++) {
-                var p = productsDB[i];
-                html += '<tr><td>' + p.id + '</td><td>' + p.name + '</td><td>$' + p.price + '</td><td>' + p.stock + '</td><td>' + p.origin + '</td><td>' + p.roast + '</td></tr>';
+        async function loadProducts() {
+            try {
+                const data = await apiCall('/api/products');
+                let html = '<table class="data-table"><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Origin</th><th>Roast</th></tr>';
+                (data.products || []).forEach(p => {
+                    html += `<tr><td>${p.id}</td><td>${p.name}</td><td>$${p.price}</td><td>${p.stock || 0}</td><td>${p.origin || 'Ethiopia'}</td><td>${p.roast || 'Medium'}</td></tr>`;
+                });
+                html += '</table>';
+                document.getElementById('products-list').innerHTML = html;
+            } catch (error) {
+                document.getElementById('products-list').innerHTML = '<p>Error loading products</p>';
             }
-            html += '</table>';
-            document.getElementById('products-list').innerHTML = html;
         }
         
         // POS
         function addToCart() {
-            var barcode = document.getElementById('pos-barcode').value.trim();
+            const barcode = document.getElementById('pos-barcode').value.trim();
             if (!barcode) { showAlert('Scan barcode', 'error'); return; }
-            cart.push({ barcode: barcode, price: 24.99 });
+            cart.push({ barcode, price: 24.99 });
             updateCartDisplay();
             document.getElementById('pos-barcode').value = '';
-            showAlert('Added ' + barcode, 'success');
+            showAlert(`Added ${barcode}`, 'success');
         }
         
         function updateCartDisplay() {
-            var html = '';
-            var total = 0;
-            for (var i = 0; i < cart.length; i++) {
-                total += cart[i].price;
-                html += '<div style="display:flex; justify-content:space-between; padding:10px;"><span>' + cart[i].barcode + '</span><span>$' + cart[i].price + '</span><button onclick="removeFromCart(' + i + ')" class="btn-danger btn-sm">Remove</button></div>';
-            }
+            let html = '';
+            let total = 0;
+            cart.forEach((item, i) => {
+                total += item.price;
+                html += `<div style="display:flex; justify-content:space-between; padding:10px;"><span>${item.barcode}</span><span>$${item.price}</span><button onclick="removeFromCart(${i})" class="btn-danger btn-sm">Remove</button></div>`;
+            });
             document.getElementById('cart-items').innerHTML = html || '<p style="text-align:center;">Empty cart</p>';
-            document.getElementById('cart-total').innerHTML = 'Total: $' + total.toFixed(2);
-            document.getElementById('sales-info').innerHTML = '<div class="stat-card"><div class="stat-value">' + cart.length + '</div><div>Items</div></div><div class="stat-card"><div class="stat-value">$' + total.toFixed(2) + '</div><div>Cart Value</div></div>';
+            document.getElementById('cart-total').innerHTML = `Total: $${total.toFixed(2)}`;
+            document.getElementById('sales-info').innerHTML = `<div class="stat-card"><div class="stat-value">${cart.length}</div><div>Items</div></div><div class="stat-card"><div class="stat-value">$${total.toFixed(2)}</div><div>Cart Value</div></div>`;
         }
         
         function removeFromCart(i) { cart.splice(i, 1); updateCartDisplay(); }
         function clearCart() { cart = []; updateCartDisplay(); showAlert('Cart cleared', 'success'); }
         function checkout() {
             if (cart.length === 0) { showAlert('Cart empty', 'error'); return; }
-            var total = 0;
-            for (var i = 0; i < cart.length; i++) total += cart[i].price;
-            showAlert('Checkout total: $' + total.toFixed(2), 'success');
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            showAlert(`Checkout complete! Total: $${total.toFixed(2)}`, 'success');
             clearCart();
         }
         
         // Analytics
-        function loadAnalytics() {
-            var totalScans = 0;
-            for (var i = 0; i < qrCodes.length; i++) totalScans += qrCodes[i].scan_count || 0;
-            document.getElementById('analytics-stats').innerHTML = '<div class="stats-grid"><div class="stat-card"><div class="stat-value">' + qrCodes.length + '</div><div>QR Codes</div></div><div class="stat-card"><div class="stat-value">' + totalScans + '</div><div>Total Scans</div></div></div>';
-            var html = '<table class="data-table"><tr><th>ID</th><th>Type</th><th>Destination</th><th>Scans</th></tr>';
-            for (var i = 0; i < qrCodes.length; i++) {
-                var c = qrCodes[i];
-                var type = c.page_type === 'product' ? 'Product' : 'Redirect';
-                var dest = c.page_type === 'product' ? (c.product_name || '-') : (c.destination_url || '-');
-                html += '<tr><td><strong>' + c.id + '</strong></td><td>' + type + '</td><td>' + dest + '</td><td>' + (c.scan_count || 0) + '</td></tr>';
+        async function loadAnalytics() {
+            try {
+                const data = await apiCall('/api/qr/list');
+                const codes = data.codes || [];
+                let totalScans = codes.reduce((s, c) => s + (c.scan_count || 0), 0);
+                document.getElementById('analytics-stats').innerHTML = `<div class="stats-grid"><div class="stat-card"><div class="stat-value">${codes.length}</div><div>QR Codes</div></div><div class="stat-card"><div class="stat-value">${totalScans}</div><div>Total Scans</div></div></div>`;
+                let html = '<table class="data-table"><tr><th>ID</th><th>Type</th><th>Destination</th><th>Scans</th></tr>';
+                codes.forEach(c => {
+                    const type = c.page_type === 'product' ? 'Product' : 'Redirect';
+                    const dest = c.page_type === 'product' ? (c.product_name || '-') : (c.destination_url || '-');
+                    html += `<tr><td><strong>${c.id}</strong></td><td>${type}</td><td>${dest}</td><td>${c.scan_count || 0}</td></tr>`;
+                });
+                html += '</table>';
+                document.getElementById('recent-scans').innerHTML = html;
+            } catch (error) {
+                console.error('Analytics error:', error);
             }
-            html += '</table>';
-            document.getElementById('recent-scans').innerHTML = html;
         }
         
         function refreshAllData() {
@@ -890,18 +946,14 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
         }
         
         // Color picker sync
-        var darkPicker = document.getElementById('qr-dark');
-        var darkHex = document.getElementById('qr-dark-hex');
-        var lightPicker = document.getElementById('qr-light');
-        var lightHex = document.getElementById('qr-light-hex');
-        if (darkPicker) darkPicker.addEventListener('input', function(e) { darkHex.value = e.target.value; });
-        if (lightPicker) lightPicker.addEventListener('input', function(e) { lightHex.value = e.target.value; });
+        document.getElementById('qr-dark')?.addEventListener('input', (e) => document.getElementById('qr-dark-hex').value = e.target.value);
+        document.getElementById('qr-light')?.addEventListener('input', (e) => document.getElementById('qr-light-hex').value = e.target.value);
         
         // Initialize
-        loadData();
         loadDashboard();
         loadQRCodes();
         loadLandingPages();
+        loadPageSelect();
         updateCartDisplay();
     </script>
 </body>
