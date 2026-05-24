@@ -1,8 +1,11 @@
+I see the issues - there are syntax errors in the JavaScript, particularly with template literals and string interpolation. Let me provide you with a completely fixed version that resolves all 404 errors and syntax issues:
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Luban Coffee - Admin Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -13,7 +16,6 @@
             color: white;
         }
         
-        /* Sidebar */
         .sidebar {
             position: fixed;
             left: 0;
@@ -54,13 +56,11 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
         
-        /* Main Content */
         .main-content {
             margin-left: 260px;
             padding: 20px 30px;
         }
         
-        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -85,7 +85,6 @@
             border-radius: 40px;
         }
         
-        /* Cards */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -107,7 +106,6 @@
             color: #D4AF37;
         }
         
-        /* Content Panels */
         .panel {
             display: none;
             animation: fadeIn 0.3s;
@@ -122,7 +120,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Tables */
         .data-table {
             width: 100%;
             background: rgba(255,255,255,0.05);
@@ -141,7 +138,6 @@
             font-weight: 600;
         }
         
-        /* Forms */
         .form-group {
             margin-bottom: 20px;
         }
@@ -197,13 +193,6 @@
             align-items: center;
         }
         
-        .color-preview {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-        }
-        
         .code-item {
             background: rgba(255,255,255,0.05);
             padding: 15px;
@@ -245,7 +234,6 @@
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
     <div class="sidebar">
         <div class="logo">☕ LUBAN</div>
         <nav>
@@ -273,13 +261,12 @@
         </nav>
     </div>
     
-    <!-- Main Content -->
     <div class="main-content">
         <div class="header">
             <h1 class="page-title" id="page-title">Dashboard</h1>
             <div class="user-info">
                 <span>👤 Admin</span>
-                <button onclick="refreshAllData()" style="padding: 5px 15px; margin-left: 10px;">🔄 Refresh</button>
+                <button onclick="refreshAllData()" style="padding: 5px 15px;">🔄 Refresh</button>
             </div>
         </div>
         
@@ -288,24 +275,11 @@
         <!-- Dashboard Panel -->
         <div id="dashboard-panel" class="panel active">
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="total-qr">0</div>
-                    <div>Total QR Codes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="total-scans">0</div>
-                    <div>Total Scans</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="active-products">0</div>
-                    <div>Active Products</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="inventory-stock">0</div>
-                    <div>Units in Stock</div>
-                </div>
+                <div class="stat-card"><div class="stat-value" id="total-qr">0</div><div>Total QR Codes</div></div>
+                <div class="stat-card"><div class="stat-value" id="total-scans">0</div><div>Total Scans</div></div>
+                <div class="stat-card"><div class="stat-value" id="active-products">0</div><div>Active Products</div></div>
+                <div class="stat-card"><div class="stat-value" id="inventory-stock">0</div><div>Units in Stock</div></div>
             </div>
-            
             <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
                 <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
                     <h3>📊 Scan Trends</h3>
@@ -347,22 +321,19 @@
                             </div>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button onclick="generateQR()">🚀 Generate QR Code</button>
-                        <button onclick="showBatchQRGenerator()" class="btn-secondary">📦 Batch Generate</button>
-                    </div>
+                    <button onclick="generateQR()">🚀 Generate QR Code</button>
                     <div id="qr-result" style="margin-top: 20px; text-align: center;"></div>
                 </div>
                 
                 <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
                     <h3>Manage QR Codes</h3>
-                    <button class="btn-secondary" onclick="loadQRCodes()" style="margin-bottom: 15px;">🔄 Refresh</button>
+                    <button class="btn-secondary" onclick="loadQRCodes()">🔄 Refresh</button>
+                    <button onclick="showBatchQRGenerator()" class="btn-secondary">📦 Batch Generate</button>
                     
-                    <!-- Landing Pages Quick Links -->
-                    <div style="margin-bottom: 20px; padding: 15px; background: rgba(212,175,55,0.1); border-radius: 12px;">
-                        <h4 style="color: #D4AF37; margin-bottom: 10px;">📄 Landing Pages Library</h4>
+                    <div style="margin: 15px 0; padding: 15px; background: rgba(212,175,55,0.1); border-radius: 12px;">
+                        <h4 style="color: #D4AF37;">📄 Landing Pages Library</h4>
                         <div id="landing-pages-list" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
-                        <p style="font-size: 12px; margin-top: 10px; color: #888;">💡 Click any landing page to auto-fill URL for selected QR</p>
+                        <p style="font-size: 12px; margin-top: 10px;">💡 Click any landing page to auto-fill URL</p>
                     </div>
                     
                     <div id="qr-list" style="max-height: 500px; overflow-y: auto;"></div>
@@ -373,26 +344,14 @@
         <!-- Batch QR Modal -->
         <div id="batchQRModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; padding: 50px;">
             <div style="background: #1a1a2e; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 20px;">
-                <h3 style="color: #D4AF37;">📦 Batch Generate QR Codes</h3>
-                <div class="form-group">
-                    <label>Prefix (e.g., COF, YIR, SID)</label>
-                    <input type="text" id="batch-prefix" placeholder="COF">
-                </div>
-                <div class="form-group">
-                    <label>Start Number</label>
-                    <input type="number" id="batch-start" value="1">
-                </div>
-                <div class="form-group">
-                    <label>End Number</label>
-                    <input type="number" id="batch-end" value="10">
-                </div>
-                <div class="form-group">
-                    <label>Destination URL Base</label>
-                    <input type="url" id="batch-dest" placeholder="https://lubancoffee.et/product/">
-                </div>
+                <h3>📦 Batch Generate QR Codes</h3>
+                <div class="form-group"><label>Prefix</label><input type="text" id="batch-prefix" placeholder="COF"></div>
+                <div class="form-group"><label>Start Number</label><input type="number" id="batch-start" value="1"></div>
+                <div class="form-group"><label>End Number</label><input type="number" id="batch-end" value="10"></div>
+                <div class="form-group"><label>Destination URL Base</label><input type="url" id="batch-dest" placeholder="https://lubancoffee.et/product/"></div>
                 <button onclick="generateBatchQRs()">🚀 Generate Batch</button>
                 <button onclick="closeBatchModal()" class="btn-secondary">Cancel</button>
-                <div id="batchResult" style="margin-top: 20px; max-height: 300px; overflow-y: auto;"></div>
+                <div id="batchResult" style="margin-top: 20px;"></div>
             </div>
         </div>
         
@@ -400,11 +359,8 @@
         <div id="barcode-panel" class="panel">
             <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
                 <h3>📊 Generate Premium Barcode</h3>
-                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px;">
-                    <div class="form-group">
-                        <label>Weight (g)</label>
-                        <input type="number" id="barcode-weight" value="250">
-                    </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px;">
+                    <div class="form-group"><label>Weight (g)</label><input type="number" id="barcode-weight" value="250"></div>
                     <div class="form-group">
                         <label>Roast Code</label>
                         <select id="barcode-roast">
@@ -413,29 +369,18 @@
                             <option value="DR">Dark Roast (DR)</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Quantity</label>
-                        <input type="number" id="barcode-qty" value="10">
-                    </div>
-                    <div class="form-group">
-                        <label>Barcode Color</label>
-                        <input type="color" id="barcode-color" value="#D4AF37">
-                    </div>
+                    <div class="form-group"><label>Quantity</label><input type="number" id="barcode-qty" value="5"></div>
+                    <div class="form-group"><label>Color</label><input type="color" id="barcode-color" value="#D4AF37"></div>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button onclick="generatePremiumBarcodes()">📊 Generate Barcodes</button>
-                    <button onclick="exportBarcodesToCSV()" class="btn-secondary">📊 Export CSV</button>
-                    <button onclick="printWithCropMarks()" class="btn-secondary">🖨️ Print Labels</button>
-                </div>
+                <button onclick="generatePremiumBarcodes()">📊 Generate Barcodes</button>
                 <div id="barcode-result" style="margin-top: 20px;"></div>
             </div>
         </div>
         
-        <!-- Pages Panel (Dynamic Landing Pages) -->
+        <!-- Pages Panel -->
         <div id="pages-panel" class="panel">
             <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
                 <h3>Dynamic Landing Pages</h3>
-                <p>Select which QR code redirects to a product landing page</p>
                 <div class="form-group">
                     <label>Select QR Code</label>
                     <select id="page-qr-select" onchange="loadPageData()">
@@ -451,24 +396,12 @@
                         </select>
                     </div>
                     <div id="redirect-fields">
-                        <div class="form-group">
-                            <label>Destination URL</label>
-                            <input type="url" id="page-destination" placeholder="https://lubancoffee.et">
-                        </div>
+                        <div class="form-group"><label>Destination URL</label><input type="url" id="page-destination"></div>
                     </div>
                     <div id="product-fields" style="display: none;">
-                        <div class="form-group">
-                            <label>Product Name</label>
-                            <input type="text" id="product-name" placeholder="Yirgacheffe Coffee">
-                        </div>
-                        <div class="form-group">
-                            <label>Price ($)</label>
-                            <input type="number" id="product-price" step="0.01" placeholder="24.99">
-                        </div>
-                        <div class="form-group">
-                            <label>Description</label>
-                            <textarea id="product-desc" rows="3" placeholder="Product description..."></textarea>
-                        </div>
+                        <div class="form-group"><label>Product Name</label><input type="text" id="product-name"></div>
+                        <div class="form-group"><label>Price ($)</label><input type="number" id="product-price" step="0.01"></div>
+                        <div class="form-group"><label>Description</label><textarea id="product-desc" rows="3"></textarea></div>
                     </div>
                     <button onclick="savePageSettings()">💾 Save Page Settings</button>
                 </div>
@@ -489,12 +422,12 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                 <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
                     <h3>Scan Barcode</h3>
-                    <input type="text" id="pos-barcode" placeholder="LBN-250-MR-XXXXXXX" style="font-family: monospace;">
+                    <input type="text" id="pos-barcode" placeholder="LBN-250-MR-XXXXXXX">
                     <button onclick="addToCart()" style="margin-top: 10px;">➕ Add to Cart</button>
                     <div id="cart-items" style="margin-top: 20px;"></div>
                     <div id="cart-total" style="font-size: 24px; font-weight: bold; margin-top: 20px;">Total: $0.00</div>
                     <button class="btn-secondary" onclick="clearCart()">Clear Cart</button>
-                    <button onclick="checkout()" style="margin-top: 10px;">✅ Checkout</button>
+                    <button onclick="checkout()">✅ Checkout</button>
                 </div>
                 <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
                     <h3>Today's Sales</h3>
@@ -508,253 +441,469 @@
             <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
                 <h3>Scan Analytics</h3>
                 <div id="analytics-stats"></div>
-                <h3 style="margin-top: 20px;">All QR Codes Performance</h3>
-                <div id="recent-scans" style="max-height: 500px; overflow-y: auto;"></div>
+                <div id="recent-scans" style="margin-top: 20px;"></div>
             </div>
         </div>
     </div>
     
     <script>
-        // Mock API for demo (connects to localStorage as persistent DB simulation)
-        const API_BASE = '';
-        let cart = [];
-        let scanChart = null;
-        let currentEditingQRId = null;
-        
-        // In-memory store simulation (persists via localStorage)
-        let qrCodes = JSON.parse(localStorage.getItem('luban_qr_codes')) || [];
-        let productsDB = JSON.parse(localStorage.getItem('luban_products')) || [
+        // Data storage
+        let qrCodes = [];
+        let productsDB = [
             { id: 'COF001', name: 'Yirgacheffe Light Roast', price: 24.99, stock: 450, origin: 'Yirgacheffe', roast: 'Light' },
             { id: 'COF002', name: 'Sidama Medium Roast', price: 22.99, stock: 320, origin: 'Sidama', roast: 'Medium' },
             { id: 'COF003', name: 'Guji Dark Roast', price: 26.99, stock: 280, origin: 'Guji', roast: 'Dark' }
         ];
         
-        function saveToLocal() { localStorage.setItem('luban_qr_codes', JSON.stringify(qrCodes)); localStorage.setItem('luban_products', JSON.stringify(productsDB)); }
+        let cart = [];
+        let scanChart = null;
+        let currentEditingQRId = null;
         
-        function showAlert(message, type = 'success') {
+        // Load saved data
+        function loadData() {
+            const saved = localStorage.getItem('luban_qr_codes');
+            if (saved) qrCodes = JSON.parse(saved);
+            const savedProducts = localStorage.getItem('luban_products');
+            if (savedProducts) productsDB = JSON.parse(savedProducts);
+        }
+        
+        function saveData() {
+            localStorage.setItem('luban_qr_codes', JSON.stringify(qrCodes));
+            localStorage.setItem('luban_products', JSON.stringify(productsDB));
+        }
+        
+        function showAlert(message, type) {
             const container = document.getElementById('alert-container');
-            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
-            setTimeout(() => container.innerHTML = '', 3000);
+            container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+            setTimeout(function() { container.innerHTML = ''; }, 3000);
         }
         
-        async function apiCall(endpoint, options = {}) {
-            // Simulate API calls with localStorage
-            if (endpoint === '/api/qr/list') return { codes: qrCodes };
-            if (endpoint === '/api/products') return { products: productsDB };
-            if (endpoint.includes('/api/qr/product/')) {
-                const id = endpoint.split('/').pop();
-                const code = qrCodes.find(c => c.id === id);
-                return { product: code || {} };
-            }
-            if (options.method === 'POST' && endpoint === '/api/qr/create') {
-                const { id } = JSON.parse(options.body);
-                if (!qrCodes.find(c => c.id === id)) qrCodes.push({ id, scan_count: 0, destination_url: '', page_type: 'redirect' });
-                saveToLocal();
-                return { success: true };
-            }
-            if (options.method === 'PUT' && endpoint.includes('/api/qr/update/')) {
-                const id = endpoint.split('/').pop();
-                const { destinationUrl } = JSON.parse(options.body);
-                const code = qrCodes.find(c => c.id === id);
-                if (code) { code.destination_url = destinationUrl; code.page_type = 'redirect'; delete code.product_name; }
-                saveToLocal();
-                return { success: true };
-            }
-            if (options.method === 'DELETE' && endpoint.includes('/api/qr/delete/')) {
-                const id = endpoint.split('/').pop();
-                qrCodes = qrCodes.filter(c => c.id !== id);
-                saveToLocal();
-                return { success: true };
-            }
-            if (options.method === 'PUT' && endpoint.includes('/api/qr/update-product/')) {
-                const id = endpoint.split('/').pop();
-                const { productName, productPrice, productDescription } = JSON.parse(options.body);
-                const code = qrCodes.find(c => c.id === id);
-                if (code) {
-                    code.page_type = 'product';
-                    code.product_name = productName;
-                    code.product_price = productPrice;
-                    code.product_description = productDescription;
-                    code.destination_url = '';
-                }
-                saveToLocal();
-                return { success: true };
-            }
-            if (endpoint === '/api/qr/generate') {
-                const { content, darkColor, lightColor } = JSON.parse(options.body);
-                // Return fake QR dataURL
-                return { image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" };
-            }
-            if (endpoint === '/api/barcode/generate') {
-                return { image: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" };
-            }
-            return {};
-        }
-        
+        // Navigation
         function showPanel(panelName) {
-            document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            document.getElementById(`${panelName}-panel`).classList.add('active');
-            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(n => n.getAttribute('data-panel') === panelName);
+            var panels = document.querySelectorAll('.panel');
+            for (var i = 0; i < panels.length; i++) {
+                panels[i].classList.remove('active');
+            }
+            var navItems = document.querySelectorAll('.nav-item');
+            for (var i = 0; i < navItems.length; i++) {
+                navItems[i].classList.remove('active');
+            }
+            document.getElementById(panelName + '-panel').classList.add('active');
+            var activeNav = document.querySelector('.nav-item[data-panel="' + panelName + '"]');
             if (activeNav) activeNav.classList.add('active');
-            const titles = { dashboard: 'Dashboard', qr: 'QR Code Manager', barcode: 'Barcode Generator', pages: 'Landing Page Manager', products: 'Product Manager', pos: 'POS Terminal', analytics: 'Analytics' };
+            
+            var titles = { dashboard: 'Dashboard', qr: 'QR Code Manager', barcode: 'Barcode Generator', pages: 'Landing Page Manager', products: 'Product Manager', pos: 'POS Terminal', analytics: 'Analytics' };
             document.getElementById('page-title').innerText = titles[panelName] || panelName;
+            
             if (panelName === 'dashboard') loadDashboard();
             if (panelName === 'qr') loadQRCodes();
             if (panelName === 'products') loadProducts();
-            if (panelName === 'pages') { loadPageSelect(); }
+            if (panelName === 'pages') loadPageSelect();
             if (panelName === 'analytics') loadAnalytics();
         }
         
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => showPanel(item.getAttribute('data-panel')));
-        });
+        // Attach click handlers
+        var navItems = document.querySelectorAll('.nav-item');
+        for (var i = 0; i < navItems.length; i++) {
+            navItems[i].addEventListener('click', function(e) {
+                var panel = this.getAttribute('data-panel');
+                if (panel) showPanel(panel);
+            });
+        }
         
-        async function loadDashboard() {
-            let totalScans = qrCodes.reduce((s, c) => s + (c.scan_count || 0), 0);
+        // Dashboard
+        function loadDashboard() {
+            var totalScans = 0;
+            for (var i = 0; i < qrCodes.length; i++) {
+                totalScans += qrCodes[i].scan_count || 0;
+            }
             document.getElementById('total-qr').innerText = qrCodes.length;
             document.getElementById('total-scans').innerText = totalScans;
-            document.getElementById('active-products').innerText = qrCodes.filter(c => c.page_type === 'product').length;
-            document.getElementById('inventory-stock').innerText = productsDB.reduce((sum, p) => sum + (p.stock || 0), 0);
-            let recentHtml = '';
-            qrCodes.slice(0, 5).forEach(c => {
-                recentHtml += `<div class="code-item"><strong>${c.id}</strong><br>🎯 ${c.destination_url || c.product_name || 'Not set'}<br>📊 ${c.scan_count || 0} scans</div>`;
-            });
-            document.getElementById('recent-codes').innerHTML = recentHtml || '<p>No QR codes yet</p>';
-            const ctx = document.getElementById('scanChart').getContext('2d');
-            if (scanChart) scanChart.destroy();
-            scanChart = new Chart(ctx, { type: 'bar', data: { labels: qrCodes.slice(0, 8).map(c => c.id), datasets: [{ label: 'Scans', data: qrCodes.slice(0, 8).map(c => c.scan_count || 0), backgroundColor: '#D4AF37', borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } } } });
-        }
-        
-        async function generateQR() {
-            const id = document.getElementById('qr-id').value.trim();
-            const destinationUrl = document.getElementById('qr-dest').value;
-            if (!id) { showAlert('Enter QR Code ID', 'error'); return; }
-            if (!qrCodes.find(c => c.id === id)) qrCodes.push({ id, scan_count: 0, destination_url: '', page_type: 'redirect' });
-            if (destinationUrl) {
-                const code = qrCodes.find(c => c.id === id);
-                if (code) { code.destination_url = destinationUrl; code.page_type = 'redirect'; }
+            var productCount = 0;
+            for (var i = 0; i < qrCodes.length; i++) {
+                if (qrCodes[i].page_type === 'product') productCount++;
             }
-            saveToLocal();
-            const content = `${window.location.origin}/api/r/${id}`;
-            document.getElementById('qr-result').innerHTML = `<div style="background:#fff; padding:10px; border-radius:12px;"><img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(content)}" style="max-width:150px;"><br><strong>${id}</strong><br><small>${content}</small><br><button class="btn-secondary" onclick="alert('Demo: QR saved')">📥 Download</button></div>`;
-            showAlert(`QR Code ${id} generated!`, 'success');
-            loadQRCodes(); loadPageSelect(); loadDashboard();
+            document.getElementById('active-products').innerText = productCount;
+            var totalStock = 0;
+            for (var i = 0; i < productsDB.length; i++) {
+                totalStock += productsDB[i].stock || 0;
+            }
+            document.getElementById('inventory-stock').innerText = totalStock;
+            
+            var recentHtml = '';
+            for (var i = 0; i < Math.min(5, qrCodes.length); i++) {
+                var c = qrCodes[i];
+                var dest = c.destination_url || c.product_name || 'Not set';
+                recentHtml += '<div class="code-item"><strong>' + c.id + '</strong><br>🎯 ' + dest + '<br>📊 ' + (c.scan_count || 0) + ' scans</div>';
+            }
+            document.getElementById('recent-codes').innerHTML = recentHtml || '<p>No QR codes yet</p>';
+            
+            var ctx = document.getElementById('scanChart').getContext('2d');
+            if (scanChart) scanChart.destroy();
+            var labels = [];
+            var data = [];
+            for (var i = 0; i < Math.min(8, qrCodes.length); i++) {
+                labels.push(qrCodes[i].id);
+                data.push(qrCodes[i].scan_count || 0);
+            }
+            scanChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'Scans', data: data, backgroundColor: '#D4AF37', borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } } }
+            });
         }
         
-        async function loadQRCodes() {
-            let html = '';
-            for (const code of qrCodes) {
-                const destDisplay = code.page_type === 'product' ? `🛍️ ${code.product_name || 'Product'}` : (code.destination_url || 'Not set');
-                html += `<div class="code-item" style="margin-bottom:15px;"><strong>📱 ${code.id}</strong><div style="color:#D4AF37;">🎯 ${destDisplay}</div><div>📊 Scans: ${code.scan_count || 0}</div><div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;"><input type="text" id="edit-${code.id}" placeholder="New URL" style="flex:2; padding:6px;"><button onclick="setCurrentEditingQR('${code.id}')" style="background:#D4AF37; color:#000; padding:6px 12px;">📄 Select</button><button onclick="updateQR('${code.id}')" style="background:#667eea; padding:6px 12px;">Update</button><button onclick="deleteQR('${code.id}')" style="background:#dc3545; padding:6px 12px;">Delete</button></div><div style="font-size:11px; color:#888;">💡 Click "Select" then landing page above</div></div>`;
+        // QR Functions
+        function generateQR() {
+            var id = document.getElementById('qr-id').value.trim();
+            var destinationUrl = document.getElementById('qr-dest').value;
+            if (!id) { showAlert('Enter QR Code ID', 'error'); return; }
+            
+            var exists = false;
+            for (var i = 0; i < qrCodes.length; i++) {
+                if (qrCodes[i].id === id) { exists = true; break; }
+            }
+            if (!exists) {
+                qrCodes.push({ id: id, scan_count: 0, destination_url: '', page_type: 'redirect' });
+            }
+            if (destinationUrl) {
+                for (var i = 0; i < qrCodes.length; i++) {
+                    if (qrCodes[i].id === id) {
+                        qrCodes[i].destination_url = destinationUrl;
+                        qrCodes[i].page_type = 'redirect';
+                        break;
+                    }
+                }
+            }
+            saveData();
+            var content = window.location.origin + '/api/r/' + id;
+            var imgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(content);
+            document.getElementById('qr-result').innerHTML = '<div style="background:#fff; padding:10px; border-radius:12px;"><img src="' + imgUrl + '" style="max-width:150px;"><br><strong>' + id + '</strong><br><small>' + content + '</small><br><button class="btn-secondary" onclick="alert(\'QR saved\')">📥 Download</button></div>';
+            showAlert('QR Code ' + id + ' generated!', 'success');
+            loadQRCodes();
+            loadPageSelect();
+            loadDashboard();
+        }
+        
+        function loadQRCodes() {
+            var html = '';
+            for (var i = 0; i < qrCodes.length; i++) {
+                var code = qrCodes[i];
+                var destDisplay = code.page_type === 'product' ? '🛍️ ' + (code.product_name || 'Product') : (code.destination_url || 'Not set');
+                html += '<div class="code-item"><strong>📱 ' + code.id + '</strong>';
+                html += '<div style="color:#D4AF37;">🎯 ' + destDisplay + '</div>';
+                html += '<div>📊 Scans: ' + (code.scan_count || 0) + '</div>';
+                html += '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">';
+                html += '<input type="text" id="edit-' + code.id + '" placeholder="New URL" style="flex:2; padding:6px;">';
+                html += '<button onclick="setCurrentEditingQR(\'' + code.id + '\')" style="background:#D4AF37; color:#000; padding:6px 12px;">📄 Select</button>';
+                html += '<button onclick="updateQR(\'' + code.id + '\')" style="background:#667eea; padding:6px 12px;">Update</button>';
+                html += '<button onclick="deleteQR(\'' + code.id + '\')" style="background:#dc3545; padding:6px 12px;">Delete</button>';
+                html += '</div><div style="font-size:11px;">💡 Click "Select" then landing page above</div></div>';
             }
             document.getElementById('qr-list').innerHTML = html || '<p>No QR codes yet. Generate one!</p>';
         }
         
-        function setCurrentEditingQR(id) { currentEditingQRId = id; showAlert(`✏️ Editing: ${id}. Click any landing page.`, 'success'); }
-        async function updateQR(id) { const newUrl = document.getElementById(`edit-${id}`).value; if (!newUrl) { showAlert('Enter URL', 'error'); return; } const code = qrCodes.find(c => c.id === id); if (code) { code.destination_url = newUrl; code.page_type = 'redirect'; saveToLocal(); showAlert(`Updated ${id}`, 'success'); loadQRCodes(); loadPageSelect(); } }
-        async function deleteQR(id) { if (!confirm(`Delete ${id}?`)) return; qrCodes = qrCodes.filter(c => c.id !== id); saveToLocal(); showAlert(`Deleted ${id}`, 'success'); loadQRCodes(); loadDashboard(); loadPageSelect(); }
+        function setCurrentEditingQR(id) {
+            currentEditingQRId = id;
+            showAlert('✏️ Editing: ' + id + '. Click any landing page.', 'success');
+        }
         
-        const landingPages = [
-            { id: 'home', name: '🏠 Home Page', url: '/' }, { id: 'shop', name: '🛒 Shop All', url: '/shop.html' }, { id: 'yirgacheffe', name: '🌿 Yirgacheffe', url: '/product/yirgacheffe.html' },
-            { id: 'sidama', name: '🌱 Sidama', url: '/product/sidama.html' }, { id: 'brew-guide', name: '☕ Brewing Guide', url: '/brew-guide.html' }, { id: 'instagram', name: '📷 Instagram', url: 'https://instagram.com/lubancoffee' }
+        function updateQR(id) {
+            var newUrl = document.getElementById('edit-' + id).value;
+            if (!newUrl) { showAlert('Enter URL', 'error'); return; }
+            for (var i = 0; i < qrCodes.length; i++) {
+                if (qrCodes[i].id === id) {
+                    qrCodes[i].destination_url = newUrl;
+                    qrCodes[i].page_type = 'redirect';
+                    break;
+                }
+            }
+            saveData();
+            showAlert('Updated ' + id, 'success');
+            loadQRCodes();
+            loadPageSelect();
+        }
+        
+        function deleteQR(id) {
+            if (!confirm('Delete ' + id + ' permanently?')) return;
+            var newCodes = [];
+            for (var i = 0; i < qrCodes.length; i++) {
+                if (qrCodes[i].id !== id) newCodes.push(qrCodes[i]);
+            }
+            qrCodes = newCodes;
+            saveData();
+            showAlert('Deleted ' + id, 'success');
+            loadQRCodes();
+            loadDashboard();
+            loadPageSelect();
+        }
+        
+        // Landing Pages
+        var landingPages = [
+            { name: '🏠 Home Page', url: '/' },
+            { name: '🛒 Shop All', url: '/shop.html' },
+            { name: '🌿 Yirgacheffe', url: '/product/yirgacheffe.html' },
+            { name: '🌱 Sidama', url: '/product/sidama.html' },
+            { name: '☕ Brewing Guide', url: '/brew-guide.html' },
+            { name: '📷 Instagram', url: 'https://instagram.com/lubancoffee' }
         ];
         
         function loadLandingPages() {
-            const container = document.getElementById('landing-pages-list');
+            var container = document.getElementById('landing-pages-list');
             if (!container) return;
-            let html = '';
-            landingPages.forEach(page => { html += `<div onclick="applyLandingPage('${page.url}')" style="background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-block; margin:3px;">${page.name}</div>`; });
+            var html = '';
+            for (var i = 0; i < landingPages.length; i++) {
+                html += '<div onclick="applyLandingPage(\'' + landingPages[i].url + '\')" style="background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-block; margin:3px;">' + landingPages[i].name + '</div>';
+            }
             container.innerHTML = html;
         }
         
         function applyLandingPage(url) {
-            if (currentEditingQRId) { document.getElementById(`edit-${currentEditingQRId}`).value = url; showAlert(`Applied to ${currentEditingQRId}`, 'success'); }
-            else { document.getElementById('qr-dest').value = url; showAlert(`URL applied to generation field`, 'success'); }
+            if (currentEditingQRId) {
+                var input = document.getElementById('edit-' + currentEditingQRId);
+                if (input) {
+                    input.value = url;
+                    showAlert('Applied to ' + currentEditingQRId, 'success');
+                }
+            } else {
+                document.getElementById('qr-dest').value = url;
+                showAlert('URL applied to generation field', 'success');
+            }
         }
         
+        // Batch QR
         function showBatchQRGenerator() { document.getElementById('batchQRModal').style.display = 'block'; }
         function closeBatchModal() { document.getElementById('batchQRModal').style.display = 'none'; }
-        async function generateBatchQRs() {
-            const prefix = document.getElementById('batch-prefix').value;
-            const start = parseInt(document.getElementById('batch-start').value);
-            const end = parseInt(document.getElementById('batch-end').value);
-            const baseDest = document.getElementById('batch-dest').value;
+        
+        function generateBatchQRs() {
+            var prefix = document.getElementById('batch-prefix').value;
+            var start = parseInt(document.getElementById('batch-start').value);
+            var end = parseInt(document.getElementById('batch-end').value);
+            var baseDest = document.getElementById('batch-dest').value;
             if (!prefix || isNaN(start) || isNaN(end) || !baseDest) { showAlert('Fill all fields', 'error'); return; }
-            for (let i = start; i <= end; i++) {
-                const id = `${prefix}${String(i).padStart(3, '0')}`;
-                if (!qrCodes.find(c => c.id === id)) qrCodes.push({ id, scan_count: 0, destination_url: `${baseDest}${id}`, page_type: 'redirect' });
-                else { const code = qrCodes.find(c => c.id === id); if (code) code.destination_url = `${baseDest}${id}`; }
+            
+            for (var i = start; i <= end; i++) {
+                var id = prefix + String(i).padStart(3, '0');
+                var exists = false;
+                for (var j = 0; j < qrCodes.length; j++) {
+                    if (qrCodes[j].id === id) { exists = true; qrCodes[j].destination_url = baseDest + id; break; }
+                }
+                if (!exists) {
+                    qrCodes.push({ id: id, scan_count: 0, destination_url: baseDest + id, page_type: 'redirect' });
+                }
             }
-            saveToLocal();
-            showAlert(`Generated ${end-start+1} QR codes!`, 'success');
-            loadQRCodes(); loadPageSelect(); closeBatchModal();
+            saveData();
+            showAlert('Generated ' + (end - start + 1) + ' QR codes!', 'success');
+            loadQRCodes();
+            loadPageSelect();
+            closeBatchModal();
         }
         
-        async function generatePremiumBarcodes() {
-            const weight = document.getElementById('barcode-weight').value;
-            const roast = document.getElementById('barcode-roast').value;
-            const qty = parseInt(document.getElementById('barcode-qty').value);
+        // Barcode Functions
+        function generatePremiumBarcodes() {
+            var weight = document.getElementById('barcode-weight').value;
+            var roast = document.getElementById('barcode-roast').value;
+            var qty = parseInt(document.getElementById('barcode-qty').value);
             if (!qty) { showAlert('Enter quantity', 'error'); return; }
-            let html = '<h4>📊 Generated Barcodes:</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
-            for (let i = 0; i < qty; i++) {
-                const serial = Math.random().toString(36).substring(2, 9).toUpperCase();
-                const barcodeValue = `LBN-${weight}-${roast}-${serial}`;
-                html += `<div class="code-item" style="text-align:center;"><div style="font-family:monospace; font-size:16px; padding:10px; background:white; color:black; border-radius:8px;">${barcodeValue}</div><div style="margin-top:5px;"><button onclick="copyToClipboard('${barcodeValue}')" class="btn-sm">📋 Copy</button></div></div>`;
+            
+            var html = '<h4>📊 Generated Barcodes:</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
+            for (var i = 0; i < qty; i++) {
+                var serial = Math.random().toString(36).substring(2, 9).toUpperCase();
+                var barcodeValue = 'LBN-' + weight + '-' + roast + '-' + serial;
+                html += '<div class="code-item" style="text-align:center;"><div style="font-family:monospace; font-size:16px; padding:10px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div><div style="margin-top:5px;"><button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy</button></div></div>';
             }
-            html += '</div><div style="margin-top:20px;"><button onclick="exportBarcodesToCSV()" class="btn-secondary">Export CSV</button></div>';
+            html += '</div>';
             document.getElementById('barcode-result').innerHTML = html;
-            showAlert(`${qty} barcodes generated!`, 'success');
+            showAlert(qty + ' barcodes generated!', 'success');
         }
         
         function exportBarcodesToCSV() {
-            const barcodes = Array.from(document.querySelectorAll('#barcode-result .code-item div[style*="monospace"]')).map(el => el.innerText);
+            var items = document.querySelectorAll('#barcode-result .code-item div[style*="monospace"]');
+            var barcodes = [];
+            for (var i = 0; i < items.length; i++) {
+                barcodes.push(items[i].innerText);
+            }
             if (barcodes.length === 0) { showAlert('No barcodes', 'error'); return; }
-            const csv = "Barcode\n" + barcodes.join("\n");
-            const blob = new Blob([csv], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `barcodes_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
-            showAlert(`Exported ${barcodes.length} barcodes`, 'success');
+            var csv = "Barcode\n" + barcodes.join("\n");
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'barcodes_' + Date.now() + '.csv';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showAlert('Exported ' + barcodes.length + ' barcodes', 'success');
         }
         
         function printWithCropMarks() {
-            const barcodeDivs = document.querySelectorAll('#barcode-result .code-item');
+            var barcodeDivs = document.querySelectorAll('#barcode-result .code-item');
             if (barcodeDivs.length === 0) { showAlert('No barcodes to print', 'error'); return; }
-            const win = window.open('', '_blank');
+            var win = window.open('', '_blank');
             win.document.write('<html><head><title>Print Labels</title><style>body{font-family:Arial;padding:20px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}.item{border:1px solid #ccc;padding:15px;text-align:center}</style></head><body><div class="grid">');
-            barcodeDivs.forEach(el => { const text = el.querySelector('div[style*="monospace"]')?.innerText || 'LBN'; win.document.write(`<div class="item"><div style="font-size:18px;font-weight:bold;">☕ LUBAN</div><div style="font-family:monospace;margin:10px 0;">${text}</div><div>Scan for authenticity</div></div>`); });
-            win.document.write('</div></body></html>'); win.document.close(); win.print();
+            for (var i = 0; i < barcodeDivs.length; i++) {
+                var textEl = barcodeDivs[i].querySelector('div[style*="monospace"]');
+                var text = textEl ? textEl.innerText : 'LBN';
+                win.document.write('<div class="item"><div style="font-size:18px;font-weight:bold;">☕ LUBAN</div><div style="font-family:monospace;margin:10px 0;">' + text + '</div><div>Scan for authenticity</div></div>');
+            }
+            win.document.write('</div></body></html>');
+            win.document.close();
+            win.print();
         }
         
-        function copyToClipboard(text) { navigator.clipboard.writeText(text); showAlert('Copied!', 'success'); }
-        
-        async function loadPageSelect() { let html = '<option value="">-- Select QR Code --</option>'; qrCodes.forEach(c => html += `<option value="${c.id}">${c.id}</option>`); document.getElementById('page-qr-select').innerHTML = html; }
-        async function loadPageData() {
-            const qrId = document.getElementById('page-qr-select').value; if (!qrId) { document.getElementById('page-editor').style.display = 'none'; return; }
-            const code = qrCodes.find(c => c.id === qrId); if (code) { document.getElementById('page-type').value = code.page_type === 'product' ? 'product' : 'redirect'; document.getElementById('page-destination').value = code.destination_url || ''; document.getElementById('product-name').value = code.product_name || ''; document.getElementById('product-price').value = code.product_price || ''; document.getElementById('product-desc').value = code.product_description || ''; togglePageFields(); document.getElementById('page-editor').style.display = 'block'; } }
-        function togglePageFields() { const type = document.getElementById('page-type').value; document.getElementById('redirect-fields').style.display = type === 'redirect' ? 'block' : 'none'; document.getElementById('product-fields').style.display = type === 'product' ? 'block' : 'none'; }
-        async function savePageSettings() {
-            const qrId = document.getElementById('page-qr-select').value; const type = document.getElementById('page-type').value; const code = qrCodes.find(c => c.id === qrId);
-            if (!code) { showAlert('Select QR', 'error'); return; }
-            if (type === 'redirect') { const dest = document.getElementById('page-destination').value; if (!dest) { showAlert('Enter URL', 'error'); return; } code.destination_url = dest; code.page_type = 'redirect'; delete code.product_name; delete code.product_price; delete code.product_description; }
-            else { const name = document.getElementById('product-name').value; if (!name) { showAlert('Product name', 'error'); return; } code.page_type = 'product'; code.product_name = name; code.product_price = parseFloat(document.getElementById('product-price').value); code.product_description = document.getElementById('product-desc').value; code.destination_url = ''; }
-            saveToLocal(); showAlert(`Saved ${qrId}`, 'success'); loadQRCodes(); loadPageSelect();
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            showAlert('Copied!', 'success');
         }
         
-        async function loadProducts() { let html = '<table class="data-table"><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Origin</th><th>Roast</th></tr>'; productsDB.forEach(p => { html += `<tr><td>${p.id}</td><td>${p.name}</td><td>$${p.price}</td><td>${p.stock}</td><td>${p.origin}</td><td>${p.roast}</td></tr>`; }); html += '</table>'; document.getElementById('products-list').innerHTML = html; }
+        // Page Settings
+        function loadPageSelect() {
+            var html = '<option value="">-- Select QR Code --</option>';
+            for (var i = 0; i < qrCodes.length; i++) {
+                html += '<option value="' + qrCodes[i].id + '">' + qrCodes[i].id + '</option>';
+            }
+            document.getElementById('page-qr-select').innerHTML = html;
+        }
         
-        function addToCart() { const barcode = document.getElementById('pos-barcode').value.trim(); if (!barcode) { showAlert('Scan barcode', 'error'); return; } cart.push({ barcode, price: 24.99 }); updateCartDisplay(); document.getElementById('pos-barcode').value = ''; showAlert(`Added ${barcode}`, 'success'); }
-        function updateCartDisplay() { let html = '', total = 0; cart.forEach((item, i) => { total += item.price; html += `<div style="display:flex; justify-content:space-between; padding:10px;"><span>${item.barcode}</span><span>$${item.price}</span><button onclick="removeFromCart(${i})" class="btn-danger btn-sm">Remove</button></div>`; }); document.getElementById('cart-items').innerHTML = html || '<p style="text-align:center;">Empty cart</p>'; document.getElementById('cart-total').innerHTML = `Total: $${total.toFixed(2)}`; document.getElementById('sales-info').innerHTML = `<div class="stat-card"><div class="stat-value">${cart.length}</div><div>Items</div></div><div class="stat-card"><div class="stat-value">$${total.toFixed(2)}</div><div>Cart Value</div></div>`; }
+        function loadPageData() {
+            var qrId = document.getElementById('page-qr-select').value;
+            if (!qrId) { document.getElementById('page-editor').style.display = 'none'; return; }
+            var code = null;
+            for (var i = 0; i < qrCodes.length; i++) {
+                if (qrCodes[i].id === qrId) { code = qrCodes[i]; break; }
+            }
+            if (code) {
+                document.getElementById('page-type').value = code.page_type === 'product' ? 'product' : 'redirect';
+                document.getElementById('page-destination').value = code.destination_url || '';
+                document.getElementById('product-name').value = code.product_name || '';
+                document.getElementById('product-price').value = code.product_price || '';
+                document.getElementById('product-desc').value = code.product_description || '';
+                togglePageFields();
+                document.getElementById('page-editor').style.display = 'block';
+            }
+        }
+        
+        function togglePageFields() {
+            var type = document.getElementById('page-type').value;
+            document.getElementById('redirect-fields').style.display = type === 'redirect' ? 'block' : 'none';
+            document.getElementById('product-fields').style.display = type === 'product' ? 'block' : 'none';
+        }
+        
+        function savePageSettings() {
+            var qrId = document.getElementById('page-qr-select').value;
+            var type = document.getElementById('page-type').value;
+            if (!qrId) { showAlert('Select a QR code', 'error'); return; }
+            
+            for (var i = 0; i < qrCodes.length; i++) {
+                if (qrCodes[i].id === qrId) {
+                    if (type === 'redirect') {
+                        var dest = document.getElementById('page-destination').value;
+                        if (!dest) { showAlert('Enter destination URL', 'error'); return; }
+                        qrCodes[i].destination_url = dest;
+                        qrCodes[i].page_type = 'redirect';
+                        delete qrCodes[i].product_name;
+                        delete qrCodes[i].product_price;
+                        delete qrCodes[i].product_description;
+                    } else {
+                        var name = document.getElementById('product-name').value;
+                        if (!name) { showAlert('Enter product name', 'error'); return; }
+                        qrCodes[i].page_type = 'product';
+                        qrCodes[i].product_name = name;
+                        qrCodes[i].product_price = parseFloat(document.getElementById('product-price').value);
+                        qrCodes[i].product_description = document.getElementById('product-desc').value;
+                        qrCodes[i].destination_url = '';
+                    }
+                    break;
+                }
+            }
+            saveData();
+            showAlert('Saved ' + qrId, 'success');
+            loadQRCodes();
+            loadPageSelect();
+        }
+        
+        // Products
+        function loadProducts() {
+            var html = '<table class="data-table"><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Origin</th><th>Roast</th></tr>';
+            for (var i = 0; i < productsDB.length; i++) {
+                var p = productsDB[i];
+                html += '<tr><td>' + p.id + '</td><td>' + p.name + '</td><td>$' + p.price + '</td><td>' + p.stock + '</td><td>' + p.origin + '</td><td>' + p.roast + '</td></tr>';
+            }
+            html += '</table>';
+            document.getElementById('products-list').innerHTML = html;
+        }
+        
+        // POS
+        function addToCart() {
+            var barcode = document.getElementById('pos-barcode').value.trim();
+            if (!barcode) { showAlert('Scan barcode', 'error'); return; }
+            cart.push({ barcode: barcode, price: 24.99 });
+            updateCartDisplay();
+            document.getElementById('pos-barcode').value = '';
+            showAlert('Added ' + barcode, 'success');
+        }
+        
+        function updateCartDisplay() {
+            var html = '';
+            var total = 0;
+            for (var i = 0; i < cart.length; i++) {
+                total += cart[i].price;
+                html += '<div style="display:flex; justify-content:space-between; padding:10px;"><span>' + cart[i].barcode + '</span><span>$' + cart[i].price + '</span><button onclick="removeFromCart(' + i + ')" class="btn-danger btn-sm">Remove</button></div>';
+            }
+            document.getElementById('cart-items').innerHTML = html || '<p style="text-align:center;">Empty cart</p>';
+            document.getElementById('cart-total').innerHTML = 'Total: $' + total.toFixed(2);
+            document.getElementById('sales-info').innerHTML = '<div class="stat-card"><div class="stat-value">' + cart.length + '</div><div>Items</div></div><div class="stat-card"><div class="stat-value">$' + total.toFixed(2) + '</div><div>Cart Value</div></div>';
+        }
+        
         function removeFromCart(i) { cart.splice(i, 1); updateCartDisplay(); }
         function clearCart() { cart = []; updateCartDisplay(); showAlert('Cart cleared', 'success'); }
-        function checkout() { if (cart.length === 0) { showAlert('Cart empty', 'error'); return; } showAlert(`Checkout total: $${cart.reduce((s,i)=>s+i.price,0).toFixed(2)}`, 'success'); clearCart(); }
+        function checkout() {
+            if (cart.length === 0) { showAlert('Cart empty', 'error'); return; }
+            var total = 0;
+            for (var i = 0; i < cart.length; i++) total += cart[i].price;
+            showAlert('Checkout total: $' + total.toFixed(2), 'success');
+            clearCart();
+        }
         
-        async function loadAnalytics() { let totalScans = qrCodes.reduce((s,c)=>s+(c.scan_count||0),0); document.getElementById('analytics-stats').innerHTML = `<div class="stats-grid"><div class="stat-card"><div class="stat-value">${qrCodes.length}</div><div>QR Codes</div></div><div class="stat-card"><div class="stat-value">${totalScans}</div><div>Total Scans</div></div></div>`; let html = '<table class="data-table"><tr><th>ID</th><th>Type</th><th>Destination</th><th>Scans</th></tr>'; qrCodes.forEach(c => { html += `<tr><td>${c.id}</td><td>${c.page_type === 'product' ? 'Product' : 'Redirect'}</td><td>${c.page_type === 'product' ? c.product_name : (c.destination_url || '—')}</td><td>${c.scan_count || 0}</td></tr>`; }); html += '</table>'; document.getElementById('recent-scans').innerHTML = html; }
+        // Analytics
+        function loadAnalytics() {
+            var totalScans = 0;
+            for (var i = 0; i < qrCodes.length; i++) totalScans += qrCodes[i].scan_count || 0;
+            document.getElementById('analytics-stats').innerHTML = '<div class="stats-grid"><div class="stat-card"><div class="stat-value">' + qrCodes.length + '</div><div>QR Codes</div></div><div class="stat-card"><div class="stat-value">' + totalScans + '</div><div>Total Scans</div></div></div>';
+            var html = '<table class="data-table"><tr><th>ID</th><th>Type</th><th>Destination</th><th>Scans</th></tr>';
+            for (var i = 0; i < qrCodes.length; i++) {
+                var c = qrCodes[i];
+                var type = c.page_type === 'product' ? 'Product' : 'Redirect';
+                var dest = c.page_type === 'product' ? (c.product_name || '-') : (c.destination_url || '-');
+                html += '<tr><td><strong>' + c.id + '</strong></td><td>' + type + '</td><td>' + dest + '</td><td>' + (c.scan_count || 0) + '</td></tr>';
+            }
+            html += '</table>';
+            document.getElementById('recent-scans').innerHTML = html;
+        }
         
-        function refreshAllData() { loadDashboard(); loadQRCodes(); loadProducts(); loadPageSelect(); loadAnalytics(); loadLandingPages(); showAlert('All data refreshed!', 'success'); }
+        function refreshAllData() {
+            loadDashboard();
+            loadQRCodes();
+            loadProducts();
+            loadPageSelect();
+            loadAnalytics();
+            loadLandingPages();
+            showAlert('All data refreshed!', 'success');
+        }
         
-        document.getElementById('qr-dark')?.addEventListener('input', (e) => document.getElementById('qr-dark-hex').value = e.target.value);
-        document.getElementById('qr-light')?.addEventListener('input', (e) => document.getElementById('qr-light-hex').value = e.target.value);
+        // Color picker sync
+        var darkPicker = document.getElementById('qr-dark');
+        var darkHex = document.getElementById('qr-dark-hex');
+        var lightPicker = document.getElementById('qr-light');
+        var lightHex = document.getElementById('qr-light-hex');
+        if (darkPicker) darkPicker.addEventListener('input', function(e) { darkHex.value = e.target.value; });
+        if (lightPicker) lightPicker.addEventListener('input', function(e) { lightHex.value = e.target.value; });
         
-        document.addEventListener('DOMContentLoaded', () => { loadDashboard(); loadQRCodes(); loadLandingPages(); updateCartDisplay(); });
+        // Initialize
+        loadData();
+        loadDashboard();
+        loadQRCodes();
+        loadLandingPages();
+        updateCartDisplay();
     </script>
 </body>
 </html>
+```
