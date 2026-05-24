@@ -351,7 +351,33 @@ app.get('/api/debug/schema', async (req, res) => {
     const schema = await detectSchema();
     res.json({ success: true, schema, message: `Using table: ${schema.qrTable}` });
 });
-
+// ============================================
+// BACKUP ENDPOINT
+// ============================================
+app.get('/api/admin/backup', async (req, res) => {
+    try {
+        const tables = ['qr_codes', 'codes', 'products', 'inventory', 'serialized_barcodes'];
+        const backup = {};
+        
+        for (const table of tables) {
+            try {
+                const result = await db.query(`SELECT * FROM ${table}`);
+                backup[table] = result.rows;
+            } catch (err) {
+                backup[table] = { error: `Table ${table} may not exist` };
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            backup, 
+            timestamp: new Date().toISOString(),
+            totalRecords: Object.values(backup).reduce((sum, t) => sum + (t.length || 0), 0)
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 // ============================================
 // SERVE STATIC FILES
 // ============================================
