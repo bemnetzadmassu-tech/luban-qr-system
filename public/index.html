@@ -373,6 +373,7 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
                     <div class="form-group"><label>Color</label><input type="color" id="barcode-color" value="#D4AF37"></div>
                 </div>
                 <button onclick="generatePremiumBarcodes()">📊 Generate Barcodes</button>
+                <button onclick="loadSavedBarcodes()" class="btn-secondary" style="margin-left: 10px;">📋 View Saved Barcodes</button>
                 <div id="barcode-result" style="margin-top: 20px;"></div>
             </div>
         </div>
@@ -740,40 +741,108 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
         }
         
         // Barcode Functions
-        async function generatePremiumBarcodes() {
-            const weight = document.getElementById('barcode-weight').value;
-            const roast = document.getElementById('barcode-roast').value;
-            const qty = parseInt(document.getElementById('barcode-qty').value);
-            const barColor = document.getElementById('barcode-color').value;
+ async function generatePremiumBarcodes() {
+    var weight = document.getElementById('barcode-weight').value;
+    var roast = document.getElementById('barcode-roast').value;
+    var qty = parseInt(document.getElementById('barcode-qty').value);
+    var barColor = document.getElementById('barcode-color').value;
+    var productId = document.getElementById('qr-id')?.value || 'COF001';
+    var batchNumber = 'BATCH-' + Date.now();
+    
+    if (!qty || qty < 1) {
+        showAlert('Enter valid quantity', 'error');
+        return;
+    }
+    
+    showAlert('Generating and saving ' + qty + ' barcodes...', 'success');
+    
+    var html = '<h4>📊 Generated & Saved Barcodes:</h4>';
+    html += '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
+    
+    for (var i = 0; i < qty; i++) {
+        var serial = Math.random().toString(36).substring(2, 9).toUpperCase();
+        var barcodeValue = 'LBN-' + weight + '-' + roast + '-' + serial;
+        
+        try {
+            // Generate barcode image
+            var response = await apiCall('/api/barcode/generate', 'POST', JSON.stringify({ 
+                id: barcodeValue, 
+                barColor: barColor 
+            }));
             
-            if (!qty) { showAlert('Enter quantity', 'error'); return; }
+            // SAVE to database (THIS IS THE KEY FIX)
+            await apiCall('/api/barcode/save', 'POST', JSON.stringify({
+                barcode: barcodeValue,
+                productId: productId,
+                batchNumber: batchNumber,
+                weight: weight,
+                roast: roast
+            }));
             
-            showAlert(`Generating ${qty} barcodes...`, 'success');
+            html += '<div class="code-item" style="text-align:center;">';
+            html += '<img src="' + response.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
+            html += '<div style="font-family:monospace; margin-top:8px;">' + barcodeValue + '</div>';
+            html += '<div style="font-size:10px; color:#28a745;">✅ Saved to database</div>';
+            html += '<button onclick="downloadBarcode(\'' + response.image + '\', \'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📥 Download</button>';
+            html += '</div>';
             
-            let html = '<h4>📊 Generated Barcodes:</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
-            
-            for (let i = 0; i < qty; i++) {
-                const serial = Math.random().toString(36).substring(2, 9).toUpperCase();
-                const barcodeValue = `LBN-${weight}-${roast}-${serial}`;
-                
-                try {
-                    const response = await apiCall('/api/barcode/generate', {
-                        method: 'POST',
-                        body: JSON.stringify({ id: barcodeValue, barColor: barColor })
-                    });
-                    html += `<div class="code-item" style="text-align:center;">
-                        <img src="${response.image}" style="max-width:200px; background:white; padding:10px; border-radius:8px;">
-                        <div style="font-family:monospace; margin-top:8px;">${barcodeValue}</div>
-                        <button onclick="downloadBarcode('${response.image}', '${barcodeValue}')" class="btn-sm">📥 Download</button>
-                    </div>`;
-                } catch(e) {
-                    html += `<div class="code-item" style="text-align:center;"><div style="font-family:monospace; padding:20px;">${barcodeValue}</div><button onclick="copyToClipboard('${barcodeValue}')" class="btn-sm">📋 Copy</button></div>`;
-                }
-            }
-            html += '</div><div style="margin-top:15px; text-align:center;"><button onclick="exportBarcodesToCSV()" class="btn-success">📊 Export CSV</button></div>';
-            document.getElementById('barcode-result').innerHTML = html;
+        } catch (error) {
+            html += '<div class="code-item" style="text-align:center;">';
+            html += '<div style="font-family:monospace; padding:20px;">' + barcodeValue + '</div>';
+            html += '<div style="font-size:10px; color:#ffc107;">⚠️ Not saved</div>';
+            html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy</button>';
+            html += '</div>';
+        }
+    }
+    
+    html += '</div>';
+    html += '<div style="margin-top:20px; text-align:center;">';
+    html += '<button onclick="loadSavedBarcodes()" class="btn-secondary">📋 View Saved Barcodes</button>';
+    html += '<button onclick="exportBarcodesToCSV()" class="btn-secondary" style="margin-left:10px;">📊 Export CSV</button>';
+    html += '</div>';
+    
+    document.getElementById('barcode-result').innerHTML = html;
+    showAlert('Generated and saved ' + qty + ' barcodes to database!', 'success');
+}
+
+// NEW FUNCTION: Load saved barcodes from database
+async function loadSavedBarcodes() {
+    showAlert('Loading saved barcodes...', 'success');
+    
+    try {
+        var data = await apiCall('/api/barcode/list', 'GET');
+        var barcodes = data.barcodes || [];
+        
+        if (barcodes.length === 0) {
+            document.getElementById('barcode-result').innerHTML = '<p>No saved barcodes found. Generate some first!</p>';
+            return;
         }
         
+        var html = '<h4>📋 Saved Barcodes (' + barcodes.length + '):</h4>';
+        html += '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:15px;">';
+        
+        for (var i = 0; i < barcodes.length; i++) {
+            var b = barcodes[i];
+            var statusColor = b.is_sold ? '#dc3545' : (b.is_activated ? '#28a745' : '#ffc107');
+            var statusText = b.is_sold ? 'Sold' : (b.is_activated ? 'Active' : 'Pending');
+            
+            html += '<div class="code-item">';
+            html += '<div style="font-family:monospace; font-size:14px;"><strong>' + b.barcode_value + '</strong></div>';
+            html += '<div style="font-size:12px; margin-top:5px;">Product: ' + (b.product_name || 'Coffee Product') + '</div>';
+            html += '<div style="font-size:12px;">Weight: ' + (b.weight_grams || 250) + 'g | Roast: ' + (b.roast_level || 'MR') + '</div>';
+            html += '<div style="font-size:12px;">Created: ' + new Date(b.created_at).toLocaleDateString() + '</div>';
+            html += '<div style="font-size:12px; color:' + statusColor + ';">Status: ' + statusText + ' | Verifications: ' + (b.verification_count || 0) + '</div>';
+            html += '<button onclick="copyToClipboard(\'' + b.barcode_value + '\')" class="btn-sm" style="margin-top:8px;">📋 Copy Barcode</button>';
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        document.getElementById('barcode-result').innerHTML = html;
+        
+    } catch (error) {
+        showAlert('Error loading saved barcodes', 'error');
+    }
+}
         function downloadBarcode(imageData, barcode) {
             const a = document.createElement('a');
             a.href = imageData;

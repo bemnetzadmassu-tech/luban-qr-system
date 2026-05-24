@@ -305,7 +305,180 @@ app.post('/api/barcode/generate', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+// ============================================
+// BARCODE VERIFICATION ENDPOINT
+// ============================================
+app.get('/api/barcode/verify/:barcode', async (req, res) => {
+    const { barcode } = req.params;
+    
+    try {
+        // Validate barcode format
+        const pattern = /^LBN-(\d{3})-([A-Z]{2})-([A-Z0-9]{7})$/;
+        const isValidFormat = pattern.test(barcode);
+        
+        if (!isValidFormat) {
+            return res.json({
+                success: true,
+                valid: false,
+                isAuthentic: false,
+                message: '❌ Invalid barcode format. Please check the code.',
+                verifiedAt: new Date().toISOString()
+            });
+        }
+        
+        // Check in serialized_barcodes table first
+        let result = await db.query(
+            'SELECT * FROM serialized_barcodes WHERE barcode_value = $1',
+            [barcode]
+        );
+        
+        // If not found, check in qr_codes or codes table
+        if (result.rows.length === 0) {
+            const qrResult = await db.query(
+                'SELECT id, destination_url FROM qr_codes WHERE id = $1',
+                [barcode]
+            );
+            if (qrResult.rows.length > 0) {
+                return res.json({
+                    success: true,
+                    valid: true,
+                    isAuthentic: true,
+                    message: '✅ QR code found in system',
+                    type: 'qr_code',
+                    verifiedAt: new Date().toISOString()
+                });
+            }
+            
+            return res.json({
+                success: true,
+                valid: false,
+                isAuthentic: false,
+                exists: false,
+                message: '❌ Barcode not found in our system. This product may be counterfeit.',
+                verifiedAt: new Date().toISOString()
+            });
+        }
+        
+        const barcodeData = result.rows[0];
+        
+        // Check if revoked or returned
+        if (barcodeData.is_revoked) {
+            return res.json({
+                success: true,
+                valid: false,
+                isAuthentic: false,
+                status: 'revoked',
+                message: '⚠️ This product has been reported and revoked.',
+                verifiedAt: new Date().toISOString()
+            });
+        }
+        
+        // Prepare response
+        const response = {
+            success: true,
+            valid: true,
+            isAuthentic: true,
+            barcode: barcode,
+            productName: barcodeData.product_name,
+            weight: barcodeData.weight_grams,
+            roast: barcodeData.roast_level,
+            batchNumber: barcodeData.batch_number,
+            status: barcodeData.is_sold ? 'sold' : (barcodeData.is_activated ? 'active' : 'pending'),
+            verificationCount: barcodeData.verification_count + 1,
+            verifiedAt: new Date().toISOString(),
+            message: '✅ GENUINE PRODUCT - Verified in Luban Coffee system'
+        };
+        
+        // Add loyalty points message
+        if (!barcodeData.is_sold) {
+            response.loyaltyPoints = 10;
+            response.message += ' | ⭐ +10 loyalty points awarded!';
+        }
+        
+        // Update verification count
+        await db.query(
+            'UPDATE serialized_barcodes SET verification_count = verification_count + 1, last_verified = CURRENT_TIMESTAMP WHERE barcode_value = $1',
+            [barcode]
+        );
+        
+        res.json(response);
+        
+    } catch (error) {
+        console.error('Barcode verification error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Verification service unavailable. Please try again later.',
+            message: error.message 
+        });
+    }
+});
+// ============================================
+// SAVE BARCODE TO DATABASE
+// ============================================
+app.post('/api/barcode/save', async (req, res) => {
+    const { barcode, productId, batchNumber, weight, roast } = req.body;
+    
+    try {
+        // Check if barcode already exists
+        const existing = await db.query(
+            'SELECT * FROM serialized_barcodes WHERE barcode_value = $1',
+            [barcode]
+        );
+        
+        if (existing.rows.length > 0) {
+            return res.json({ success: true, message: 'Barcode already exists', exists: true });
+        }
+        
+        // Insert new barcode
+        await db.query(`
+            INSERT INTO serialized_barcodes (barcode_value, product_id, batch_number, weight_grams, roast_level, created_at)
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        `, [barcode, productId || 'COF001', batchNumber || 'BATCH-' + Date.now(), weight || 250, roast || 'MR']);
+        
+        res.json({ success: true, message: 'Barcode saved to database' });
+    } catch (error) {
+        console.error('Save barcode error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
+// ============================================
+// GET ALL SAVED BARCODES
+// ============================================
+app.get('/api/barcode/list', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT barcode_value, product_name, weight_grams, roast_level, 
+                   is_activated, is_sold, created_at, verification_count
+            FROM serialized_barcodes 
+            ORDER BY created_at DESC
+        `);
+        res.json({ success: true, barcodes: result.rows });
+    } catch (error) {
+        res.json({ success: true, barcodes: [] });
+    }
+});
+// ============================================
+// SIMPLE BARCODE TEST ENDPOINT (no DB required)
+// ============================================
+app.get('/api/barcode/test/:barcode', (req, res) => {
+    const { barcode } = req.params;
+    const pattern = /^LBN-(\d{3})-([A-Z]{2})-([A-Z0-9]{7})$/;
+    const isValid = pattern.test(barcode);
+    
+    res.json({
+        success: true,
+        barcode: barcode,
+        isValidFormat: isValid,
+        message: isValid ? '✅ Valid barcode format' : '❌ Invalid barcode format',
+        format: isValid ? {
+            prefix: 'LBN',
+            weight: barcode.split('-')[1],
+            roast: barcode.split('-')[2],
+            serial: barcode.split('-')[3]
+        } : null
+    });
+});
 // ============================================
 // PRODUCTS & STATS
 // ============================================
