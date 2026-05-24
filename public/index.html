@@ -343,11 +343,19 @@
                     <div id="qr-result" style="margin-top: 20px; text-align: center;"></div>
                 </div>
                 
-                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
-                    <h3>Manage QR Codes</h3>
-                    <button class="btn-secondary" onclick="loadQRCodes()" style="margin-bottom: 15px;">🔄 Refresh</button>
-                    <div id="qr-list" style="max-height: 500px; overflow-y: auto;"></div>
-                </div>
+               <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+    <h3>Manage QR Codes</h3>
+    <button class="btn-secondary" onclick="loadQRCodes()" style="margin-bottom: 15px;">🔄 Refresh</button>
+    
+    <!-- NEW: Landing Pages Quick Links -->
+    <div style="margin-bottom: 20px; padding: 15px; background: rgba(212,175,55,0.1); border-radius: 12px;">
+        <h4 style="color: #D4AF37; margin-bottom: 10px;">📄 Landing Pages Library</h4>
+        <div id="landing-pages-list" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+        <p style="font-size: 12px; margin-top: 10px; color: #888;">💡 Click any landing page to auto-fill in QR code below</p>
+    </div>
+    
+    <div id="qr-list" style="max-height: 500px; overflow-y: auto;"></div>
+</div>
             </div>
         </div>
         
@@ -606,26 +614,113 @@
             a.click();
         }
         
+                // ============================================
+        // LANDING PAGES LIBRARY
+        // ============================================
+        
+        const landingPages = [
+             { id: 'newpage', name: '🆕 New Page', url: '/newpage.html', type: 'internal', description: 'Description' },
+            { id: 'home', name: '🏠 Home Page', url: '/', type: 'internal', description: 'Main website homepage' },
+            { id: 'shop', name: '🛒 Shop All', url: '/shop.html', type: 'internal', description: 'Browse all products' },
+            { id: 'about', name: '📖 Our Story', url: '/about.html', type: 'internal', description: 'Ethiopian coffee heritage' },
+            { id: 'yirgacheffe', name: '🌿 Yirgacheffe', url: '/product/yirgacheffe.html', type: 'internal', description: 'Light roast, floral notes' },
+            { id: 'sidama', name: '🌱 Sidama', url: '/product/sidama.html', type: 'internal', description: 'Medium roast, berry notes' },
+            { id: 'guji', name: '⛰️ Guji', url: '/product/guji.html', type: 'internal', description: 'Medium-dark, chocolate notes' },
+            { id: 'brew-guide', name: '☕ Brewing Guide', url: '/brew-guide.html', type: 'internal', description: 'Perfect brewing methods' },
+            { id: 'loyalty', name: '⭐ Loyalty Rewards', url: '/loyalty.html', type: 'internal', description: 'Earn points, get rewards' },
+            { id: 'instagram', name: '📷 Instagram', url: 'https://instagram.com/lubancoffee', type: 'external', description: 'Follow us' },
+            { id: 'facebook', name: '👍 Facebook', url: 'https://facebook.com/lubancoffee', type: 'external', description: 'Like our page' },
+            { id: 'whatsapp', name: '💬 WhatsApp', url: 'https://wa.me/251900000000', type: 'external', description: 'Order via WhatsApp' },
+        ];
+
+        let currentEditingQRId = null;
+
+        function loadLandingPages() {
+            const container = document.getElementById('landing-pages-list');
+            if (!container) return;
+            
+            let html = '';
+            const internalPages = landingPages.filter(p => p.type === 'internal');
+            html += `<div style="width: 100%; margin-bottom: 8px;"><strong style="color: #D4AF37;">🏠 Internal Pages</strong></div>`;
+            internalPages.forEach(page => {
+                html += `<div onclick="applyLandingPage('${page.url}')" style="background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; display: inline-block; margin: 3px;">
+                    ${page.name}
+                </div>`;
+            });
+            
+            const externalPages = landingPages.filter(p => p.type === 'external');
+            html += `<div style="width: 100%; margin: 10px 0 8px 0;"><strong style="color: #D4AF37;">🌐 External Links</strong></div>`;
+            externalPages.forEach(page => {
+                html += `<div onclick="applyLandingPage('${page.url}')" style="background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; display: inline-block; margin: 3px;">
+                    ${page.name}
+                </div>`;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function applyLandingPage(url) {
+            if (currentEditingQRId) {
+                const inputField = document.getElementById(`edit-${currentEditingQRId}`);
+                if (inputField) {
+                    inputField.value = url;
+                    showAlert(`✅ Applied to ${currentEditingQRId}: ${url}`, 'success');
+                }
+            } else {
+                const destField = document.getElementById('qr-dest');
+                if (destField) {
+                    destField.value = url;
+                    showAlert(`✅ URL applied to generation field`, 'success');
+                }
+            }
+        }
+
+        function setCurrentEditingQR(id) {
+            currentEditingQRId = id;
+            showAlert(`✏️ Now editing: ${id}. Click any landing page above.`, 'success');
+            
+            document.querySelectorAll('.code-item').forEach(el => {
+                el.style.borderLeft = '3px solid rgba(255,255,255,0.2)';
+                el.style.background = 'rgba(255,255,255,0.05)';
+            });
+            const items = document.querySelectorAll('.code-item');
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].innerText.includes(id)) {
+                    items[i].style.borderLeft = '3px solid #D4AF37';
+                    items[i].style.background = 'rgba(212,175,55,0.15)';
+                }
+            }
+        }
+
+        // MAIN QR CODE LIST FUNCTION - This is the one that should be used
         async function loadQRCodes() {
             try {
                 const data = await apiCall('/api/qr/list');
                 let html = '';
-                (data.codes || []).forEach(code => {
-                    html += `<div class="code-item">
-                        <strong>📱 ${code.id}</strong><br>
-                        🎯 ${code.destination_url || code.product_name || 'Not set'}<br>
-                        📊 Scans: ${code.scan_count || 0}<br>
-                        <input type="text" id="edit-${code.id}" placeholder="New URL" style="margin-top: 8px; width: calc(100% - 90px); display: inline-block;">
-                        <button onclick="updateQR('${code.id}')" style="margin-left: 5px; padding: 8px 12px;">Update</button>
-                        <button onclick="deleteQR('${code.id}')" class="btn-danger" style="margin-left: 5px; padding: 8px 12px;">Delete</button>
+                for (const code of (data.codes || [])) {
+                    const destDisplay = code.page_type === 'product' 
+                        ? `🛍️ ${code.product_name || 'Product'}` 
+                        : (code.destination_url || 'Not set');
+                    
+                    html += `<div class="code-item" style="margin-bottom: 15px;">
+                        <strong>📱 ${code.id}</strong>
+                        <div style="color: #D4AF37; font-size: 12px;">🎯 ${destDisplay}</div>
+                        <div>📊 Scans: ${code.scan_count || 0}</div>
+                        <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                            <input type="text" id="edit-${code.id}" placeholder="New URL" style="flex: 2; padding: 6px;">
+                            <button onclick="setCurrentEditingQR('${code.id}')" style="background: #D4AF37; color: #000; padding: 6px 12px;">📄 Select</button>
+                            <button onclick="updateQR('${code.id}')" style="background: #667eea; padding: 6px 12px;">Update</button>
+                            <button onclick="deleteQR('${code.id}')" style="background: #dc3545; padding: 6px 12px;">Delete</button>
+                        </div>
+                        <div style="font-size: 11px; color: #888; margin-top: 6px;">💡 Click "Select" then choose a landing page above</div>
                     </div>`;
-                });
+                }
                 document.getElementById('qr-list').innerHTML = html || '<p>No QR codes yet. Generate one!</p>';
             } catch (error) {
                 console.error('Load QR error:', error);
             }
         }
-        
+
         async function updateQR(id) {
             const newUrl = document.getElementById(`edit-${id}`).value;
             if (!newUrl) { showAlert('Enter a URL', 'error'); return; }
@@ -843,21 +938,24 @@
         }
         
         function refreshAllData() {
-            loadDashboard();
-            loadQRCodes();
-            loadProducts();
-            loadPageSelect();
-            loadAnalytics();
-            showAlert('All data refreshed!', 'success');
-        }
+    loadDashboard();
+    loadQRCodes();
+    loadProducts();
+    loadPageSelect();
+    loadAnalytics();
+    loadLandingPages();  // ADD THIS LINE
+    showAlert('All data refreshed!', 'success');
+}
         
         // Color picker sync
         document.getElementById('qr-dark')?.addEventListener('input', (e) => document.getElementById('qr-dark-hex').value = e.target.value);
         document.getElementById('qr-light')?.addEventListener('input', (e) => document.getElementById('qr-light-hex').value = e.target.value);
         
-        // Initial load
-        loadDashboard();
-        updateCartDisplay();
+       // Initial load
+loadDashboard();
+loadQRCodes();  // Make sure this calls the new version
+loadLandingPages();  // ADD THIS LINE
+updateCartDisplay();
     </script>
 </body>
 </html>
