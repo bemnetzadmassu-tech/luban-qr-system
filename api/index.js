@@ -290,19 +290,49 @@ app.get('/api/r/:id', async (req, res) => {
 app.post('/api/barcode/generate', async (req, res) => {
     try {
         const { id, barColor = '#D4AF37' } = req.body;
-        if (!id) return res.status(400).json({ error: 'ID required' });
         
-        const barcodeBuffer = await new Promise((resolve, reject) => {
-            bwipjs.toBuffer({
-                bcid: 'code128', text: id, scale: 3, height: 12,
-                includetext: true, textxalign: 'center',
-                barcolor: barColor.replace('#', '')
-            }, (err, png) => err ? reject(err) : resolve(png));
+        if (!id) {
+            return res.status(400).json({ error: 'ID required' });
+        }
+        
+        // Set a timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Timeout')), 8000);
         });
         
-        res.json({ success: true, image: `data:image/png;base64,${barcodeBuffer.toString('base64')}`, id });
+        const barcodePromise = new Promise((resolve, reject) => {
+            bwipjs.toBuffer({
+                bcid: 'code128',
+                text: id,
+                scale: 3,
+                height: 12,
+                includetext: true,
+                textxalign: 'center',
+                barcolor: barColor.replace('#', '')
+            }, (err, png) => {
+                if (err) reject(err);
+                else resolve(png);
+            });
+        });
+        
+        const barcodeBuffer = await Promise.race([barcodePromise, timeoutPromise]);
+        
+        res.json({ 
+            success: true, 
+            image: 'data:image/png;base64,' + barcodeBuffer.toString('base64'), 
+            id: id 
+        });
+        
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Barcode generate error:', error);
+        // Return a fallback text-based barcode
+        res.json({ 
+            success: true, 
+            image: null,
+            text: id,
+            fallback: true,
+            message: 'Barcode image generation failed, but text is available'
+        });
     }
 });
 // ============================================
@@ -436,6 +466,7 @@ app.post('/api/barcode/save', async (req, res) => {
         `, [barcode, productId || 'COF001', batchNumber || 'BATCH-' + Date.now(), weight || 250, roast || 'MR']);
         
         res.json({ success: true, message: 'Barcode saved to database' });
+        
     } catch (error) {
         console.error('Save barcode error:', error);
         res.status(500).json({ error: error.message });
@@ -470,7 +501,7 @@ app.get('/api/barcode/test/:barcode', (req, res) => {
         success: true,
         barcode: barcode,
         isValidFormat: isValid,
-        message: isValid ? '✅ Valid barcode format' : '❌ Invalid barcode format',
+        message: isValid ? 'Valid barcode format' : 'Invalid barcode format',
         format: isValid ? {
             prefix: 'LBN',
             weight: barcode.split('-')[1],

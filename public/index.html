@@ -741,7 +741,7 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
         }
         
         // Barcode Functions
- async function generatePremiumBarcodes() {
+async function generatePremiumBarcodes() {
     var weight = document.getElementById('barcode-weight').value;
     var roast = document.getElementById('barcode-roast').value;
     var qty = parseInt(document.getElementById('barcode-qty').value);
@@ -754,9 +754,9 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
         return;
     }
     
-    showAlert('Generating and saving ' + qty + ' barcodes...', 'success');
+    showAlert('Generating ' + qty + ' barcodes...', 'success');
     
-    var html = '<h4>📊 Generated & Saved Barcodes:</h4>';
+    var html = '<h4>📊 Generated Barcodes:</h4>';
     html += '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
     
     for (var i = 0; i < qty; i++) {
@@ -764,33 +764,56 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
         var barcodeValue = 'LBN-' + weight + '-' + roast + '-' + serial;
         
         try {
-            // Generate barcode image
-            var response = await apiCall('/api/barcode/generate', 'POST', JSON.stringify({ 
-                id: barcodeValue, 
-                barColor: barColor 
-            }));
+            // Generate barcode image with timeout
+            var controller = new AbortController();
+            var timeoutId = setTimeout(function() { controller.abort(); }, 10000);
             
-            // SAVE to database (THIS IS THE KEY FIX)
-            await apiCall('/api/barcode/save', 'POST', JSON.stringify({
-                barcode: barcodeValue,
-                productId: productId,
-                batchNumber: batchNumber,
-                weight: weight,
-                roast: roast
-            }));
+            var response = await fetch('/api/barcode/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: barcodeValue, barColor: barColor }),
+                signal: controller.signal
+            });
             
-            html += '<div class="code-item" style="text-align:center;">';
-            html += '<img src="' + response.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
-            html += '<div style="font-family:monospace; margin-top:8px;">' + barcodeValue + '</div>';
-            html += '<div style="font-size:10px; color:#28a745;">✅ Saved to database</div>';
-            html += '<button onclick="downloadBarcode(\'' + response.image + '\', \'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📥 Download</button>';
-            html += '</div>';
+            clearTimeout(timeoutId);
+            var data = await response.json();
+            
+            // Save to database (don't wait for response)
+            fetch('/api/barcode/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    barcode: barcodeValue,
+                    productId: productId,
+                    batchNumber: batchNumber,
+                    weight: weight,
+                    roast: roast
+                })
+            }).catch(function(e) { console.log('Save error:', e); });
+            
+            if (data.image) {
+                html += '<div class="code-item" style="text-align:center;">';
+                html += '<img src="' + data.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
+                html += '<div style="font-family:monospace; margin-top:8px;">' + barcodeValue + '</div>';
+                html += '<div style="font-size:10px; color:#28a745;">✅ Barcode generated</div>';
+                html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📋 Copy</button>';
+                html += '</div>';
+            } else {
+                // Fallback to text
+                html += '<div class="code-item" style="text-align:center;">';
+                html += '<div style="font-family:monospace; font-size:16px; padding:20px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div>';
+                html += '<div style="font-size:10px; color:#ffc107; margin-top:5px;">⚠️ Text only (image unavailable)</div>';
+                html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📋 Copy</button>';
+                html += '</div>';
+            }
             
         } catch (error) {
+            console.error('Barcode generation failed:', error);
+            // Fallback to text
             html += '<div class="code-item" style="text-align:center;">';
-            html += '<div style="font-family:monospace; padding:20px;">' + barcodeValue + '</div>';
-            html += '<div style="font-size:10px; color:#ffc107;">⚠️ Not saved</div>';
-            html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy</button>';
+            html += '<div style="font-family:monospace; font-size:16px; padding:20px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div>';
+            html += '<div style="font-size:10px; color:#dc3545; margin-top:5px;">❌ Generation failed</div>';
+            html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📋 Copy Text</button>';
             html += '</div>';
         }
     }
@@ -802,9 +825,8 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
     html += '</div>';
     
     document.getElementById('barcode-result').innerHTML = html;
-    showAlert('Generated and saved ' + qty + ' barcodes to database!', 'success');
+    showAlert('Generated ' + qty + ' barcodes!', 'success');
 }
-
 // NEW FUNCTION: Load saved barcodes from database
 async function loadSavedBarcodes() {
     showAlert('Loading saved barcodes...', 'success');
