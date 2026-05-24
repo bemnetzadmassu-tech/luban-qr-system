@@ -311,6 +311,47 @@ app.get('/api/diagnose', async (req, res) => {
         res.json({ error: error.message });
     }
 });
+// ============================================
+// QR CODE GENERATE - ADD THIS ENDPOINT
+// ============================================
+app.post('/api/qr/generate', async (req, res) => {
+    try {
+        const { content, darkColor = '#D4AF37', lightColor = '#FFFFFF', format = 'png' } = req.body;
+        
+        if (!content) {
+            return res.status(400).json({ error: 'Content required' });
+        }
+        
+        const QRCode = require('qrcode');
+        
+        if (format === 'svg') {
+            const svgString = await QRCode.toString(content, {
+                type: 'svg',
+                width: 500,
+                margin: 2,
+                color: { dark: darkColor, light: lightColor },
+                errorCorrectionLevel: 'H'
+            });
+            res.json({ success: true, svgContent: svgString, format: 'svg' });
+        } else {
+            const qrBuffer = await QRCode.toBuffer(content, {
+                type: 'png',
+                width: 500,
+                margin: 2,
+                color: { dark: darkColor, light: lightColor },
+                errorCorrectionLevel: 'H'
+            });
+            res.json({ 
+                success: true, 
+                image: `data:image/png;base64,${qrBuffer.toString('base64')}`,
+                format: 'png'
+            });
+        }
+    } catch (error) {
+        console.error('QR generate error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 // SMART CREATE - Auto-adapts to schema
 app.post('/api/qr/create', async (req, res) => {
     const { id } = req.body;
