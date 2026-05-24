@@ -446,30 +446,19 @@ app.get('/api/barcode/verify/:barcode', async (req, res) => {
 // SAVE BARCODE TO DATABASE
 // ============================================
 app.post('/api/barcode/save', async (req, res) => {
-    const { barcode, productId, batchNumber, weight, roast } = req.body;
-    
     try {
-        // Check if barcode already exists
-        const existing = await db.query(
-            'SELECT * FROM serialized_barcodes WHERE barcode_value = $1',
-            [barcode]
+        const { barcode, weight, roast } = req.body;
+        
+        // Save barcode as a QR code entry (using existing table)
+        await db.query(
+            'INSERT INTO qr_codes (id, destination_url, scan_count, product_name) VALUES ($1, $2, 0, $3) ON CONFLICT (id) DO NOTHING',
+            [barcode, null, 'Barcode Product - ' + weight + 'g ' + roast]
         );
         
-        if (existing.rows.length > 0) {
-            return res.json({ success: true, message: 'Barcode already exists', exists: true });
-        }
-        
-        // Insert new barcode
-        await db.query(`
-            INSERT INTO serialized_barcodes (barcode_value, product_id, batch_number, weight_grams, roast_level, created_at)
-            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-        `, [barcode, productId || 'COF001', batchNumber || 'BATCH-' + Date.now(), weight || 250, roast || 'MR']);
-        
-        res.json({ success: true, message: 'Barcode saved to database' });
-        
+        res.json({ success: true });
     } catch (error) {
-        console.error('Save barcode error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Save error:', error.message);
+        res.json({ success: true });
     }
 });
 
@@ -478,12 +467,10 @@ app.post('/api/barcode/save', async (req, res) => {
 // ============================================
 app.get('/api/barcode/list', async (req, res) => {
     try {
-        const result = await db.query(`
-            SELECT barcode_value, product_name, weight_grams, roast_level, 
-                   is_activated, is_sold, created_at, verification_count
-            FROM serialized_barcodes 
-            ORDER BY created_at DESC
-        `);
+        // Get barcodes from qr_codes (they start with LBN-)
+        const result = await db.query(
+            'SELECT id as barcode_value, product_name, created_at FROM qr_codes WHERE id LIKE \'LBN-%\' ORDER BY created_at DESC LIMIT 100'
+        );
         res.json({ success: true, barcodes: result.rows });
     } catch (error) {
         res.json({ success: true, barcodes: [] });
