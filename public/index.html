@@ -462,20 +462,25 @@ I see the issues - there are syntax errors in the JavaScript, particularly with 
             setTimeout(() => container.innerHTML = '', 3000);
         }
         
-        async function apiCall(endpoint, options = {}) {
-            try {
-                const response = await fetch(`${API_BASE}${endpoint}`, {
-                    ...options,
-                    headers: { 'Content-Type': 'application/json', ...options.headers }
-                });
-                const data = await response.json();
-                if (!response.ok && !data.success) throw new Error(data.error || 'API Error');
-                return data;
-            } catch (error) {
-                showAlert(error.message, 'error');
-                throw error;
-            }
-        }
+       // In your public/index.html, make sure apiCall uses the correct method
+function apiCall(endpoint, method, body) {
+    return fetch(endpoint, {
+        method: method || 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        body: body || null
+    })
+    .then(function(response) { return response.json(); })
+    .catch(function(error) {
+        showAlert(error.message, 'error');
+        throw error;
+    });
+}
+
+// Then call it correctly:
+var response = await apiCall('/api/barcode/generate', 'POST', JSON.stringify({ 
+    id: barcodeValue, 
+    barColor: barColor 
+}));
         
         // Navigation
         function showPanel(panelName) {

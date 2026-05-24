@@ -9,20 +9,28 @@ const pool = new Pool({
 async function initDB() {
     try {
         // Main table - ONE ID for BOTH QR and Barcode!
-      await pool.query(`
+      // Add this to your database.js initDB() function
+await pool.query(`
     CREATE TABLE IF NOT EXISTS serialized_barcodes (
         id SERIAL PRIMARY KEY,
         barcode_value TEXT UNIQUE NOT NULL,
         product_id TEXT,
         product_name TEXT,
         batch_number TEXT,
+        weight_grams INTEGER DEFAULT 250,
+        roast_level TEXT DEFAULT 'MR',
         is_activated BOOLEAN DEFAULT FALSE,
         is_sold BOOLEAN DEFAULT FALSE,
-        sold_at TIMESTAMP,
-        sold_price DECIMAL(10,2),
-        activated_at TIMESTAMP,
+        is_revoked BOOLEAN DEFAULT FALSE,
+        verification_count INTEGER DEFAULT 0,
+        last_verified TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
+`);
+
+// Also add index for faster lookups
+await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_barcode_value ON serialized_barcodes(barcode_value)
 `);
         
         await pool.query(`
