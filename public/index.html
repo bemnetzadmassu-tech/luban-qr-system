@@ -429,8 +429,8 @@
             }).catch(function(e) { console.error('Batch error:', e); });
         }
         
-        // ============================================
-        // BARCODE FUNCTIONS - WORKING VERSION
+               // ============================================
+        // BARCODE FUNCTIONS WITH DOWNLOAD OPTION
         // ============================================
         
         var isGenerating = false;
@@ -450,12 +450,14 @@
             var resultDiv = document.getElementById('barcode-result');
             resultDiv.innerHTML = '<div style="text-align:center; padding:40px;">⏳ Generating ' + qty + ' barcodes...</div>';
             
-            var html = '<h4>📊 Generated Barcodes:</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:15px;">';
-            var count = 0;
+            var html = '<h4>📊 Generated Barcodes:</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:15px;">';
             
             function generateNext(index) {
                 if (index >= qty) {
-                    html += '</div><div style="margin-top:20px; text-align:center;"><button onclick="loadSavedBarcodes()" class="btn-secondary">📋 View Saved</button></div>';
+                    html += '</div><div style="margin-top:20px; text-align:center;">';
+                    html += '<button onclick="loadSavedBarcodes()" class="btn-secondary">📋 View Saved Barcodes</button>';
+                    html += '<button onclick="downloadAllBarcodes()" class="btn-secondary" style="margin-left:10px;">📥 Download All</button>';
+                    html += '</div>';
                     resultDiv.innerHTML = html;
                     showAlert('Generated ' + qty + ' barcodes!', 'success');
                     isGenerating = false;
@@ -476,27 +478,38 @@
                 })
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
+                    // Save to database
                     fetch('/api/barcode/save', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ barcode: barcodeValue, weight: weight, roast: roast })
                     }).catch(function(e) { console.log('Save error:', e); });
                     
+                    var imageId = 'img_' + Date.now() + '_' + index;
+                    
                     html += '<div class="code-item" style="text-align:center;">';
                     if (data && data.image) {
-                        html += '<img src="' + data.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
+                        html += '<img id="' + imageId + '" src="' + data.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
+                        html += '<div><button onclick="downloadSingleBarcode(\'' + data.image + '\', \'' + barcodeValue + '\')" class="btn-sm" style="margin-top:8px;">📥 Download PNG</button></div>';
                     } else {
                         html += '<div style="font-family:monospace; font-size:16px; padding:20px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div>';
                     }
-                    html += '<div style="font-family:monospace; margin-top:8px;">' + barcodeValue + '</div>';
-                    html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm" style="margin-top:5px;">📋 Copy</button>';
+                    html += '<div style="font-family:monospace; margin-top:8px;"><strong>' + barcodeValue + '</strong></div>';
+                    html += '<div style="margin-top:8px;">';
+                    html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy</button>';
+                    html += '<button onclick="testScanBarcode(\'' + barcodeValue + '\')" class="btn-sm" style="margin-left:5px;">🔍 Test Scan</button>';
+                    html += '</div>';
                     html += '</div>';
                     
                     setTimeout(function() { generateNext(index + 1); }, 100);
                 })
                 .catch(function(error) {
                     console.error('Error:', error);
-                    html += '<div class="code-item" style="text-align:center;"><div style="font-family:monospace; padding:20px;">' + barcodeValue + '</div><div style="color:#dc3545;">❌ Failed</div></div>';
+                    html += '<div class="code-item" style="text-align:center;">';
+                    html += '<div style="font-family:monospace; padding:20px;">' + barcodeValue + '</div>';
+                    html += '<div style="color:#dc3545;">❌ Failed</div>';
+                    html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy</button>';
+                    html += '</div>';
                     setTimeout(function() { generateNext(index + 1); }, 100);
                 });
             }
@@ -504,31 +517,103 @@
             generateNext(0);
         }
         
+        // Download single barcode
+        function downloadSingleBarcode(imageData, barcodeName) {
+            var a = document.createElement('a');
+            a.href = imageData;
+            a.download = barcodeName + '.png';
+            a.click();
+            showAlert('Downloaded: ' + barcodeName, 'success');
+        }
+        
+        // Download all barcodes as ZIP (creates multiple downloads)
+        function downloadAllBarcodes() {
+            var images = document.querySelectorAll('#barcode-result img');
+            if (images.length === 0) {
+                showAlert('No barcodes to download', 'error');
+                return;
+            }
+            
+            for (var i = 0; i < images.length; i++) {
+                var img = images[i];
+                var barcodeText = img.parentElement.parentElement.querySelector('div[style*="monospace"] strong')?.innerText || 'barcode_' + i;
+                var a = document.createElement('a');
+                a.href = img.src;
+                a.download = barcodeText + '.png';
+                a.click();
+            }
+            showAlert('Downloaded ' + images.length + ' barcodes', 'success');
+        }
+        
+        // Test scan a barcode
+        function testScanBarcode(barcodeValue) {
+            showAlert('🔍 Testing barcode: ' + barcodeValue, 'success');
+            
+            fetch('/api/barcode/verify/' + barcodeValue)
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                var message = '';
+                if (data.valid && data.isAuthentic) {
+                    message = '✅ AUTHENTIC PRODUCT!\n';
+                    message += 'Product: ' + (data.productName || 'Luban Coffee') + '\n';
+                    message += 'Status: ' + (data.status || 'Active') + '\n';
+                    if (data.loyaltyPoints) message += '⭐ +' + data.loyaltyPoints + ' loyalty points!';
+                } else {
+                    message = '❌ ' + (data.message || 'Invalid barcode');
+                }
+                alert(message);
+            })
+            .catch(function(error) {
+                alert('❌ Verification service error. Please try again.');
+                console.error(error);
+            });
+        }
+        
+        // Load saved barcodes from database
         function loadSavedBarcodes() {
+            showAlert('Loading saved barcodes...', 'success');
+            
             fetch('/api/barcode/list')
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 var barcodes = data.barcodes || [];
+                
                 if (barcodes.length === 0) {
-                    document.getElementById('barcode-result').innerHTML = '<p>No saved barcodes found.</p>';
+                    document.getElementById('barcode-result').innerHTML = '<p style="text-align:center; padding:40px;">No saved barcodes found. Generate some first!</p>';
                     return;
                 }
-                var html = '<h4>📋 Saved Barcodes (' + barcodes.length + '):</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:15px;">';
+                
+                var html = '<h4>📋 Saved Barcodes (' + barcodes.length + '):</h4>';
+                html += '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:15px;">';
+                
                 for (var i = 0; i < barcodes.length; i++) {
                     var b = barcodes[i];
-                    html += '<div class="code-item"><div style="font-family:monospace;"><strong>' + (b.barcode_value || 'N/A') + '</strong></div>';
-                    html += '<div style="font-size:12px;">Created: ' + new Date(b.created_at).toLocaleDateString() + '</div>';
-                    html += '<button onclick="copyToClipboard(\'' + (b.barcode_value || '') + '\')" class="btn-sm">📋 Copy</button></div>';
+                    var barcodeValue = b.barcode_value || b.id || 'N/A';
+                    var createdDate = b.created_at ? new Date(b.created_at).toLocaleDateString() : 'Unknown';
+                    
+                    html += '<div class="code-item">';
+                    html += '<div style="font-family:monospace; font-size:14px;"><strong>' + barcodeValue + '</strong></div>';
+                    html += '<div style="font-size:12px;">Created: ' + createdDate + '</div>';
+                    html += '<div style="font-size:12px;">Weight: ' + (b.weight_grams || 250) + 'g | Roast: ' + (b.roast_level || 'MR') + '</div>';
+                    html += '<div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">';
+                    html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy Barcode</button>';
+                    html += '<button onclick="testScanBarcode(\'' + barcodeValue + '\')" class="btn-sm">🔍 Test Scan</button>';
+                    html += '</div>';
+                    html += '</div>';
                 }
+                
                 html += '</div>';
                 document.getElementById('barcode-result').innerHTML = html;
             })
-            .catch(function(error) { showAlert('Error loading barcodes', 'error'); });
+            .catch(function(error) {
+                console.error('Error:', error);
+                showAlert('Error loading saved barcodes', 'error');
+            });
         }
         
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text);
-            showAlert('Copied!', 'success');
+            showAlert('Copied: ' + text, 'success');
         }
         
         // Page Settings
