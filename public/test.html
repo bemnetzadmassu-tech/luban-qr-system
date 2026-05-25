@@ -1,37 +1,721 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Luban QR System</title>
+    <title>Luban Coffee - Smart Barcodes with Product Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
-        body { font-family: Arial; text-align: center; padding: 50px; background: #1a1a2e; color: white; }
-        .container { background: white; color: black; padding: 30px; border-radius: 20px; max-width: 500px; margin: 0 auto; }
-        .status { padding: 10px; border-radius: 10px; margin-top: 20px; }
-        .online { background: #d4edda; color: green; }
-        .offline { background: #f8d7da; color: red; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Courier New', 'Segoe UI', monospace;
+            background: #e8e4dc;
+            padding: 24px;
+        }
+        .main-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+        /* LEFT PANEL - PRINT BARCODE */
+        .print-panel {
+            flex: 1.2;
+            min-width: 360px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .panel-header {
+            background: linear-gradient(135deg, #1a3a32, #0b2b26);
+            padding: 18px 24px;
+            color: #D4AF37;
+            border-bottom: 3px solid #D4AF37;
+        }
+        .panel-header h2 {
+            font-size: 24px;
+        }
+        .panel-header p {
+            font-size: 12px;
+            color: #c0b27a;
+        }
+        .barcode-area {
+            padding: 30px 24px;
+            text-align: center;
+        }
+        .barcode-svg-container {
+            background: white;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+        }
+        .barcode-number {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            background: #1a3a32;
+            color: #D4AF37;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 40px;
+            margin-top: 12px;
+        }
+        .product-info-card {
+            background: #f5f2ec;
+            border-radius: 16px;
+            padding: 16px;
+            margin-top: 16px;
+            text-align: left;
+        }
+        .product-info-card h4 {
+            color: #1a3a32;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px dashed #ddd0bc;
+            font-size: 13px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #5a4e3a;
+        }
+        .info-value {
+            color: #1a3a32;
+            font-family: monospace;
+        }
+        .price-large {
+            font-size: 24px;
+            font-weight: bold;
+            color: #D4AF37;
+            background: #1a3a32;
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 30px;
+            margin-top: 8px;
+        }
+        .selector-area {
+            background: #f5f2ec;
+            padding: 16px 20px;
+            border-top: 1px solid #ddd0bc;
+            border-bottom: 1px solid #ddd0bc;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 30px;
+            border: 1px solid #c0b28a;
+            background: white;
+            cursor: pointer;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            padding: 20px;
+        }
+        button {
+            flex: 1;
+            background: #D4AF37;
+            border: none;
+            padding: 12px;
+            border-radius: 40px;
+            font-weight: bold;
+            color: #1e2a2a;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #e6c45e;
+            transform: translateY(-1px);
+        }
+        .btn-outline {
+            background: #2c5a4a;
+            color: #D4AF37;
+        }
+        
+        /* RIGHT PANEL - POS / SCAN RESULT */
+        .simulator-panel {
+            flex: 1;
+            min-width: 400px;
+            background: #1e1e2e;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .pos-header {
+            background: linear-gradient(135deg, #2c2c3a, #1a1a2a);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #D4AF37;
+        }
+        .pos-header h3 {
+            color: #D4AF37;
+            font-size: 18px;
+        }
+        .pos-header span {
+            background: #D4AF37;
+            color: #1a1a2a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .cart-area {
+            background: #252535;
+            padding: 20px;
+            min-height: 350px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .cart-item {
+            background: #2d2d3d;
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #D4AF37;
+            animation: slideIn 0.2s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .item-details {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: bold;
+            color: #eee;
+            font-size: 14px;
+        }
+        .item-sku {
+            font-size: 10px;
+            color: #888;
+            font-family: monospace;
+        }
+        .item-price {
+            font-weight: bold;
+            color: #D4AF37;
+            font-size: 16px;
+        }
+        .item-qty {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 15px;
+        }
+        .qty-btn {
+            background: #3a3a4a;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+        }
+        .qty-btn:hover {
+            background: #D4AF37;
+            color: #1a1a2a;
+            transform: none;
+        }
+        .remove-btn {
+            background: #5a2a2a;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .cart-total {
+            background: #1a1a2a;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #3a3a4a;
+        }
+        .total-label {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ccc;
+        }
+        .total-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #D4AF37;
+        }
+        .checkout-area {
+            padding: 16px 20px;
+            display: flex;
+            gap: 12px;
+            background: #1a1a2a;
+        }
+        .checkout-btn {
+            background: #D4AF37;
+            color: #1a1a2a;
+            font-weight: bold;
+        }
+        .clear-cart-btn {
+            background: #5a3a2a;
+            color: #D4AF37;
+        }
+        .scan-feedback {
+            background: #2a2a3a;
+            padding: 12px 20px;
+            font-size: 12px;
+            color: #8bc34a;
+            font-family: monospace;
+            border-top: 1px solid #3a3a4a;
+        }
+        .instruction {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin: 16px 20px;
+            font-size: 12px;
+        }
+        @media print {
+            .simulator-panel, .action-buttons, .selector-area, .instruction, .product-info-card {
+                display: none;
+            }
+            .print-panel {
+                box-shadow: none;
+                width: 100%;
+            }
+            .barcode-area {
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>☕ Luban Coffee QR System</h1>
-        <p>API Status: <span id="status" class="status">Checking...</span></p>
-        <button onclick="checkAPI()">Test Connection</button>
+<div class="main-container">
+    <!-- LEFT: PRINT BARCODE SECTION -->
+    <div class="print-panel">
+        <div class="panel-header">
+            <h2>☕ LUBAN COFFEE</h2>
+            <p>Smart Barcode · Contains Product Data</p>
+        </div>
+        
+        <div class="barcode-area">
+            <div class="barcode-svg-container">
+                <svg id="printBarcode" width="300" height="80"></svg>
+            </div>
+            <div class="barcode-number" id="barcodeValueDisplay">LBN-250-LR-YIRG001</div>
+            
+            <!-- Product Info Card with Price -->
+            <div class="product-info-card" id="productInfoCard">
+                <h4>📦 PRODUCT DETAILS</h4>
+                <div class="info-row"><span class="info-label">Product:</span><span class="info-value" id="infoName">Yirgacheffe G1</span></div>
+                <div class="info-row"><span class="info-label">Roast:</span><span class="info-value" id="infoRoast">Light Roast</span></div>
+                <div class="info-row"><span class="info-label">Weight:</span><span class="info-value" id="infoWeight">250g</span></div>
+                <div class="info-row"><span class="info-label">Origin:</span><span class="info-value" id="infoOrigin">Ethiopia · Yirgacheffe</span></div>
+                <div class="info-row"><span class="info-label">Price:</span><span class="info-value price-large" id="infoPrice">$28.99</span></div>
+            </div>
+        </div>
+        
+        <div class="selector-area">
+            <label>📦 SELECT PRODUCT:</label>
+            <select id="productSelect">
+                <option value="LBN-250-LR-YIRG001|Yirgacheffe G1|Light Roast|250g|Ethiopia · Yirgacheffe|28.99|Floral, Citrus, Jasmine">🌱 Yirgacheffe G1 · Light Roast — $28.99</option>
+                <option value="LBN-250-MR-SID002|Sidama Natural|Medium Roast|250g|Ethiopia · Sidama|26.50|Berry, Chocolate, Smooth">🍒 Sidama Natural · Medium Roast — $26.50</option>
+                <option value="LBN-250-MD-GUJI003|Guji Hambela|Medium-Dark|250g|Ethiopia · Guji|31.99|Stone fruit, Caramel, Bold">⛰️ Guji Hambela · Medium-Dark — $31.99</option>
+                <option value="LBN-250-DR-LEGACY04|Legacy Reserve|Dark Roast|250g|Ethiopia · Blend|34.99|Smoky, Dark chocolate, Full body">🔥 Legacy Reserve · Dark Roast — $34.99</option>
+                <option value="LBN-250-LR-LIMU005|Limu Special|Light Roast|250g|Ethiopia · Limu|29.99|Winey, Honey, Elegant acidity">🍯 Limu Special · Light Roast — $29.99</option>
+                <option value="LBN-250-MR-HARAR006|Harar Longberry|Medium Roast|250g|Ethiopia · Harar|32.99|Blueberry, Winey, Complex">🫐 Harar Longberry · Medium Roast — $32.99</option>
+                <option value="LBN-250-MR-BENSA007|Bensa Reserve|Medium Roast|250g|Ethiopia · Bensa|30.99|Jasmine, Lemon, Tea-like">🌿 Bensa Reserve · Medium Roast — $30.99</option>
+                <option value="LBN-250-DR-DECAF008|Decaf Ethiopia|Dark Roast|250g|Ethiopia · Sidama|27.99|Smooth, Malt, Sweet finish">☕ Decaf Ethiopia · Dark Roast — $27.99</option>
+                <option value="LBN-500-MR-ETH999|Premium Blend|Medium Roast|500g|Ethiopia · Blend|49.99|Balanced, Nutty, Rich body">🏆 Premium Blend · Medium Roast (500g) — $49.99</option>
+            </select>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="refreshBtn">⟳ Refresh</button>
+            <button id="printBtn" class="btn-outline">🖨️ PRINT BARCODE</button>
+        </div>
+        
+        <div class="instruction">
+            <strong>📋 HOW TO USE:</strong><br>
+            1️⃣ Print this barcode<br>
+            2️⃣ Scan with your USB barcode scanner<br>
+            3️⃣ The product will be automatically added to the POS cart on the right<br>
+            4️⃣ Each scan adds 1 quantity to cart
+        </div>
     </div>
-    <script>
-        async function checkAPI() {
-            const statusDiv = document.getElementById('status');
-            try {
-                const response = await fetch('/api/health');
-                const data = await response.json();
-                if (data.status === 'ok') {
-                    statusDiv.innerHTML = '✅ API is ONLINE';
-                    statusDiv.className = 'status online';
-                }
-            } catch (error) {
-                statusDiv.innerHTML = '❌ API Error: ' + error.message;
-                statusDiv.className = 'status offline';
-            }
+    
+    <!-- RIGHT: POS CART SIMULATOR -->
+    <div class="simulator-panel">
+        <div class="pos-header">
+            <h3>🛒 LUBAN POS TERMINAL</h3>
+            <span>LIVE SCAN TEST</span>
+        </div>
+        
+        <div class="cart-area" id="cartArea">
+            <div style="text-align: center; color: #666; padding: 40px;">
+                No items scanned yet<br>
+                Scan a barcode to add product
+            </div>
+        </div>
+        
+        <div class="cart-total">
+            <span class="total-label">TOTAL</span>
+            <span class="total-amount" id="cartTotal">$0.00</span>
+        </div>
+        
+        <div class="checkout-area">
+            <button id="checkoutBtn" class="checkout-btn">💵 CHECKOUT</button>
+            <button id="clearCartBtn" class="clear-cart-btn">🗑️ Clear Cart</button>
+        </div>
+        
+        <div class="scan-feedback" id="scanFeedback">
+            🔍 Ready to scan — Scanner will add items automatically
+        </div>
+    </div>
+</div>
+
+<script>
+    // Product database with full details
+    const productsDB = {
+        "LBN-250-LR-YIRG001": {
+            name: "Yirgacheffe G1",
+            roast: "Light Roast",
+            weight: "250g",
+            origin: "Ethiopia · Yirgacheffe",
+            price: 28.99,
+            flavor: "Floral, Citrus, Jasmine"
+        },
+        "LBN-250-MR-SID002": {
+            name: "Sidama Natural",
+            roast: "Medium Roast",
+            weight: "250g",
+            origin: "Ethiopia · Sidama",
+            price: 26.50,
+            flavor: "Berry, Chocolate, Smooth"
+        },
+        "LBN-250-MD-GUJI003": {
+            name: "Guji Hambela",
+            roast: "Medium-Dark",
+            weight: "250g",
+            origin: "Ethiopia · Guji",
+            price: 31.99,
+            flavor: "Stone fruit, Caramel, Bold"
+        },
+        "LBN-250-DR-LEGACY04": {
+            name: "Legacy Reserve",
+            roast: "Dark Roast",
+            weight: "250g",
+            origin: "Ethiopia · Blend",
+            price: 34.99,
+            flavor: "Smoky, Dark chocolate, Full body"
+        },
+        "LBN-250-LR-LIMU005": {
+            name: "Limu Special",
+            roast: "Light Roast",
+            weight: "250g",
+            origin: "Ethiopia · Limu",
+            price: 29.99,
+            flavor: "Winey, Honey, Elegant acidity"
+        },
+        "LBN-250-MR-HARAR006": {
+            name: "Harar Longberry",
+            roast: "Medium Roast",
+            weight: "250g",
+            origin: "Ethiopia · Harar",
+            price: 32.99,
+            flavor: "Blueberry, Winey, Complex"
+        },
+        "LBN-250-MR-BENSA007": {
+            name: "Bensa Reserve",
+            roast: "Medium Roast",
+            weight: "250g",
+            origin: "Ethiopia · Bensa",
+            price: 30.99,
+            flavor: "Jasmine, Lemon, Tea-like"
+        },
+        "LBN-250-DR-DECAF008": {
+            name: "Decaf Ethiopia",
+            roast: "Dark Roast",
+            weight: "250g",
+            origin: "Ethiopia · Sidama",
+            price: 27.99,
+            flavor: "Smooth, Malt, Sweet finish"
+        },
+        "LBN-500-MR-ETH999": {
+            name: "Premium Blend",
+            roast: "Medium Roast",
+            weight: "500g",
+            origin: "Ethiopia · Blend",
+            price: 49.99,
+            flavor: "Balanced, Nutty, Rich body"
         }
-        checkAPI();
-    </script>
+    };
+    
+    let currentBarcode = "LBN-250-LR-YIRG001";
+    let cart = []; // { barcode, name, price, quantity }
+    
+    // Generate high quality barcode
+    function generateBarcode(barcodeValue) {
+        try {
+            JsBarcode("#printBarcode", barcodeValue, {
+                format: "CODE128",
+                width: 2,
+                height: 65,
+                displayValue: false,
+                margin: 10,
+                background: "#ffffff",
+                lineColor: "#1a3a32"
+            });
+            return true;
+        } catch(e) {
+            console.error("Barcode error:", e);
+            return false;
+        }
+    }
+    
+    // Update UI when product changes
+    function updateBarcode() {
+        const select = document.getElementById("productSelect");
+        const selectedValue = select.value;
+        const parts = selectedValue.split("|");
+        const barcodeValue = parts[0];
+        const productName = parts[1];
+        const roast = parts[2];
+        const weight = parts[3];
+        const origin = parts[4];
+        const price = parts[5];
+        
+        currentBarcode = barcodeValue;
+        
+        // Generate barcode
+        generateBarcode(currentBarcode);
+        
+        // Update displays
+        document.getElementById("barcodeValueDisplay").innerText = currentBarcode;
+        document.getElementById("infoName").innerText = productName;
+        document.getElementById("infoRoast").innerText = roast;
+        document.getElementById("infoWeight").innerText = weight;
+        document.getElementById("infoOrigin").innerText = origin;
+        document.getElementById("infoPrice").innerHTML = `$${parseFloat(price).toFixed(2)}`;
+    }
+    
+    // Update cart display and total
+    function updateCartDisplay() {
+        const cartArea = document.getElementById("cartArea");
+        const cartTotalSpan = document.getElementById("cartTotal");
+        
+        if (cart.length === 0) {
+            cartArea.innerHTML = `<div style="text-align: center; color: #666; padding: 40px;">
+                                    No items scanned yet<br>
+                                    Scan a barcode to add product
+                                  </div>`;
+            cartTotalSpan.innerText = "$0.00";
+            return;
+        }
+        
+        let html = "";
+        let total = 0;
+        
+        cart.forEach((item, index) => {
+            const itemTotal = item.price * item.quantity;
+            total += itemTotal;
+            html += `
+                <div class="cart-item">
+                    <div class="item-details">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-sku">${item.barcode}</div>
+                    </div>
+                    <div class="item-qty">
+                        <button class="qty-btn" onclick="changeQuantity(${index}, -1)">-</button>
+                        <span style="color:#eee; min-width: 30px; text-align:center;">${item.quantity}</span>
+                        <button class="qty-btn" onclick="changeQuantity(${index}, 1)">+</button>
+                    </div>
+                    <div class="item-price">$${itemTotal.toFixed(2)}</div>
+                    <button class="remove-btn" onclick="removeCartItem(${index})">✗</button>
+                </div>
+            `;
+        });
+        
+        cartArea.innerHTML = html;
+        cartTotalSpan.innerText = `$${total.toFixed(2)}`;
+    }
+    
+    // Add product to cart
+    function addToCart(barcode) {
+        const product = productsDB[barcode];
+        if (!product) {
+            showScanFeedback(`❌ Unknown barcode: ${barcode}`, "error");
+            return false;
+        }
+        
+        const existingItem = cart.find(item => item.barcode === barcode);
+        if (existingItem) {
+            existingItem.quantity++;
+        } else {
+            cart.push({
+                barcode: barcode,
+                name: product.name,
+                price: product.price,
+                quantity: 1
+            });
+        }
+        
+        updateCartDisplay();
+        showScanFeedback(`✅ Added: ${product.name} - $${product.price.toFixed(2)}`, "success");
+        return true;
+    }
+    
+    // Change quantity
+    function changeQuantity(index, delta) {
+        if (cart[index]) {
+            const newQty = cart[index].quantity + delta;
+            if (newQty <= 0) {
+                cart.splice(index, 1);
+            } else {
+                cart[index].quantity = newQty;
+            }
+            updateCartDisplay();
+        }
+    }
+    
+    // Remove item
+    function removeCartItem(index) {
+        cart.splice(index, 1);
+        updateCartDisplay();
+        showScanFeedback("🗑️ Item removed from cart", "info");
+    }
+    
+    // Clear cart
+    function clearCart() {
+        cart = [];
+        updateCartDisplay();
+        showScanFeedback("🧹 Cart cleared", "info");
+    }
+    
+    // Checkout
+    function checkout() {
+        if (cart.length === 0) {
+            showScanFeedback("❌ Cart is empty! Scan some items first.", "error");
+            return;
+        }
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+        
+        showScanFeedback(`🎉 CHECKOUT COMPLETE! ${itemCount} items · Total: $${total.toFixed(2)}`, "success");
+        
+        // Optional: alert summary
+        alert(`🧾 LUBAN COFFEE RECEIPT\n\nItems: ${itemCount}\nTotal: $${total.toFixed(2)}\n\nThank you for choosing Luban Coffee! ☕`);
+        
+        // Clear cart after checkout
+        cart = [];
+        updateCartDisplay();
+    }
+    
+    // Show feedback in scanner area
+    function showScanFeedback(message, type = "success") {
+        const feedbackDiv = document.getElementById("scanFeedback");
+        feedbackDiv.innerHTML = `🔍 ${message}`;
+        if (type === "error") {
+            feedbackDiv.style.color = "#ff8888";
+        } else if (type === "success") {
+            feedbackDiv.style.color = "#8bc34a";
+        } else {
+            feedbackDiv.style.color = "#D4AF37";
+        }
+        setTimeout(() => {
+            feedbackDiv.style.color = "#8bc34a";
+            feedbackDiv.innerHTML = "🔍 Ready to scan — Scanner will add items automatically";
+        }, 2500);
+    }
+    
+    // BARCODE SCANNER LISTENER (real USB scanner)
+    function setupScannerListener() {
+        let scanBuffer = "";
+        let scanTimeout = null;
+        
+        document.addEventListener("keydown", function(event) {
+            // Ignore if typing in select or buttons
+            if (event.target.tagName === "SELECT" || event.target.tagName === "BUTTON") {
+                return;
+            }
+            
+            // Enter key typically ends a barcode scan
+            if (event.key === "Enter") {
+                if (scanBuffer.length > 3) {
+                    const scannedBarcode = scanBuffer;
+                    addToCart(scannedBarcode);
+                    scanBuffer = "";
+                    if (scanTimeout) clearTimeout(scanTimeout);
+                }
+                return;
+            }
+            
+            // Accumulate characters from scanner
+            if (event.key.length === 1 || event.key === " " || /^[A-Za-z0-9\-]$/.test(event.key)) {
+                scanBuffer += event.key;
+                
+                if (scanTimeout) clearTimeout(scanTimeout);
+                scanTimeout = setTimeout(() => {
+                    scanBuffer = "";
+                }, 100);
+            }
+        });
+        
+        console.log("🔍 Scanner ready — scan any Luban barcode to add to cart!");
+    }
+    
+    // Refresh barcode
+    function refreshBarcode() {
+        generateBarcode(currentBarcode);
+        const container = document.querySelector(".barcode-svg-container");
+        container.style.transition = "0.1s";
+        container.style.backgroundColor = "#fef6e0";
+        setTimeout(() => {
+            container.style.backgroundColor = "white";
+        }, 200);
+    }
+    
+    // Print barcode
+    function printBarcode() {
+        window.print();
+    }
+    
+    // Initialize
+    function init() {
+        document.getElementById("productSelect").addEventListener("change", updateBarcode);
+        document.getElementById("refreshBtn").addEventListener("click", refreshBarcode);
+        document.getElementById("printBtn").addEventListener("click", printBarcode);
+        document.getElementById("checkoutBtn").addEventListener("click", checkout);
+        document.getElementById("clearCartBtn").addEventListener("click", clearCart);
+        
+        updateBarcode();
+        setupScannerListener();
+        
+        if (typeof JsBarcode === 'undefined') {
+            alert("⚠️ Barcode library not loaded. Check internet connection.");
+        } else {
+            console.log("✅ Luban Coffee POS Ready — Scan barcodes to add to cart!");
+        }
+    }
+    
+    window.addEventListener("load", init);
+</script>
 </body>
 </html>

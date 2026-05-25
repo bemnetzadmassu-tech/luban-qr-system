@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Luban Coffee - Admin Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f1a; color: white; }
@@ -39,6 +40,20 @@
         .alert-error { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #dc3545; }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
         @media (max-width: 768px) { .sidebar { width: 70px; } .sidebar span { display: none; } .main-content { margin-left: 70px; } .stats-grid { grid-template-columns: 1fr; } }
+        
+        /* Smart POS Panel Styles */
+        .smartpos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .barcode-preview { background: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        .product-details-card { background: rgba(212,175,55,0.1); border-radius: 12px; padding: 15px; margin-bottom: 20px; }
+        .product-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(212,175,55,0.2); }
+        .product-row:last-child { border-bottom: none; }
+        .pos-cart-item { background: #2d2d3d; border-radius: 10px; padding: 10px 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #D4AF37; }
+        .pos-total { background: #1a1a2a; padding: 15px 20px; display: flex; justify-content: space-between; border-top: 1px solid #3a3a4a; }
+        .pos-feedback { background: #2a2a3a; padding: 10px 15px; font-size: 12px; color: #8bc34a; font-family: monospace; }
+        .btn-cash { background: #28a745; }
+        .btn-card { background: #17a2b8; }
+        .btn-mobile { background: #ffc107; color: #1a1a2e; }
+        @media (max-width: 768px) { .smartpos-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -48,6 +63,7 @@
             <div class="nav-item active" data-panel="dashboard"><span>📊</span><span>Dashboard</span></div>
             <div class="nav-item" data-panel="qr"><span>📱</span><span>QR Codes</span></div>
             <div class="nav-item" data-panel="barcode"><span>🏷️</span><span>Barcodes</span></div>
+            <div class="nav-item" data-panel="smartpos"><span>🖨️</span><span>Smart POS</span></div>
             <div class="nav-item" data-panel="pages"><span>📄</span><span>Landing Pages</span></div>
             <div class="nav-item" data-panel="products"><span>☕</span><span>Products</span></div>
             <div class="nav-item" data-panel="pos"><span>💳</span><span>POS Terminal</span></div>
@@ -134,6 +150,79 @@
             </div>
         </div>
         
+        <!-- SMART POS & BARCODE PANEL (NEW) -->
+        <div id="smartpos-panel" class="panel">
+            <div class="smartpos-grid">
+                <!-- LEFT: Smart Barcode Generator -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 25px;">
+                    <h3 style="color: #D4AF37; margin-bottom: 20px;">🖨️ Smart Barcode Generator</h3>
+                    <p style="font-size: 12px; color: #888; margin-bottom: 15px;">Contains product data - Print & Scan</p>
+                    
+                    <div class="barcode-preview">
+                        <svg id="printBarcode" width="280" height="70" style="margin: 0 auto;"></svg>
+                        <div style="font-family: monospace; font-size: 12px; margin-top: 10px; background: #f0f0f0; display: inline-block; padding: 5px 15px; border-radius: 20px; color: #333;" id="barcodeValueDisplay">LBN-250-LR-YIRG001</div>
+                    </div>
+                    
+                    <div class="product-details-card">
+                        <h4 style="color: #D4AF37; margin-bottom: 10px;">📦 Product Details</h4>
+                        <div class="product-row"><span>Product:</span><span id="infoName" style="color: #D4AF37;">Yirgacheffe G1</span></div>
+                        <div class="product-row"><span>Roast:</span><span id="infoRoast">Light Roast</span></div>
+                        <div class="product-row"><span>Weight:</span><span id="infoWeight">250g</span></div>
+                        <div class="product-row"><span>Origin:</span><span id="infoOrigin">Ethiopia · Yirgacheffe</span></div>
+                        <div class="product-row"><span>Price:</span><span id="infoPrice" style="font-size: 20px; color: #D4AF37;">$28.99</span></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>📦 Select Product</label>
+                        <select id="productSelect" style="font-family: monospace;">
+                            <option value="LBN-250-LR-YIRG001|Yirgacheffe G1|Light Roast|250g|Ethiopia · Yirgacheffe|28.99">🌱 Yirgacheffe G1 · Light Roast — $28.99</option>
+                            <option value="LBN-250-MR-SID002|Sidama Natural|Medium Roast|250g|Ethiopia · Sidama|26.50">🍒 Sidama Natural · Medium Roast — $26.50</option>
+                            <option value="LBN-250-MD-GUJI003|Guji Hambela|Medium-Dark|250g|Ethiopia · Guji|31.99">⛰️ Guji Hambela · Medium-Dark — $31.99</option>
+                            <option value="LBN-250-DR-LEGACY04|Legacy Reserve|Dark Roast|250g|Ethiopia · Blend|34.99">🔥 Legacy Reserve · Dark Roast — $34.99</option>
+                            <option value="LBN-250-LR-LIMU005|Limu Special|Light Roast|250g|Ethiopia · Limu|29.99">🍯 Limu Special · Light Roast — $29.99</option>
+                            <option value="LBN-250-MR-HARAR006|Harar Longberry|Medium Roast|250g|Ethiopia · Harar|32.99">🫐 Harar Longberry · Medium Roast — $32.99</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="refreshSmartBarcode()" class="btn-secondary">⟳ Refresh</button>
+                        <button onclick="printSmartBarcode()" style="background: #D4AF37; color: #1a1a2e;">🖨️ Print</button>
+                        <button onclick="downloadSmartBarcode()" class="btn-secondary">📥 Download PNG</button>
+                    </div>
+                </div>
+                
+                <!-- RIGHT: POS Simulator -->
+                <div style="background: #1a1a2e; border-radius: 20px; overflow: hidden;">
+                    <div style="background: linear-gradient(135deg, #2c2c3a, #1a1a2a); padding: 15px 20px; border-bottom: 2px solid #D4AF37;">
+                        <h3 style="color: #D4AF37;">🛒 POS TERMINAL</h3>
+                        <p style="font-size: 11px; color: #888;">Scan barcode → Auto-add to cart</p>
+                    </div>
+                    
+                    <div id="smartCartArea" style="background: #252535; padding: 15px; min-height: 320px; max-height: 350px; overflow-y: auto;">
+                        <div style="text-align: center; color: #666; padding: 40px;">No items scanned yet<br>Scan a barcode to add product</div>
+                    </div>
+                    
+                    <div class="pos-total">
+                        <span style="font-size: 18px; font-weight: bold; color: #ccc;">TOTAL</span>
+                        <span id="smartCartTotal" style="font-size: 28px; font-weight: bold; color: #D4AF37;">$0.00</span>
+                    </div>
+                    
+                    <div style="padding: 15px 20px; display: flex; gap: 10px;">
+                        <button onclick="smartCheckout('cash')" class="btn-cash" style="flex: 1; background: #28a745;">💰 Cash</button>
+                        <button onclick="smartCheckout('card')" class="btn-card" style="flex: 1; background: #17a2b8;">💳 Card</button>
+                        <button onclick="smartCheckout('mobile')" class="btn-mobile" style="flex: 1; background: #ffc107; color: #1a1a2e;">📱 Mobile</button>
+                    </div>
+                    <div style="display: flex; gap: 10px; padding: 0 20px 15px 20px;">
+                        <button onclick="clearSmartCart()" class="btn-secondary" style="flex: 1;">🗑️ Clear Cart</button>
+                    </div>
+                    
+                    <div class="pos-feedback" id="smartPosFeedback">
+                        🔍 Ready to scan — Scanner will add items automatically
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Pages Panel -->
         <div id="pages-panel" class="panel">
             <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
@@ -161,7 +250,7 @@
             </div>
         </div>
         
-        <!-- POS Panel -->
+        <!-- POS Panel (Original) -->
         <div id="pos-panel" class="panel">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                 <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
@@ -186,54 +275,240 @@
             </div>
         </div>
     </div>
-    <!-- Update POS Panel with real scanner support -->
-<div id="pos-panel" class="panel">
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-        <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
-            <h3>🖨️ POS Terminal</h3>
-            
-            <!-- Scanner Input (supports USB barcode scanner) -->
-            <div class="form-group">
-                <label>🔍 Scan Barcode</label>
-                <input type="text" id="pos-barcode" placeholder="LBN-250-MR-XXXXXXX" 
-                       style="font-family: monospace; font-size: 16px;" autofocus>
-                <small style="color: #888;">Position cursor here and scan barcode</small>
-            </div>
-            
-            <!-- Manual entry option -->
-            <div class="form-group">
-                <label>✏️ Or Manual Product ID</label>
-                <input type="text" id="pos-manual-id" placeholder="COF001, YIRG001">
-            </div>
-            
-            <button onclick="posAddToCart()" style="margin-top: 5px;">➕ Add to Cart</button>
-            <button onclick="posClearCart()" class="btn-secondary" style="margin-left: 10px;">🗑️ Clear Cart</button>
-            
-            <div id="pos-cart-items" style="margin-top: 20px; max-height: 300px; overflow-y: auto;"></div>
-            
-            <div id="pos-cart-total" style="font-size: 24px; font-weight: bold; margin-top: 20px; color: #D4AF37;">
-                Total: $0.00
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button onclick="posCheckout('cash')" class="btn-success">💰 Cash</button>
-                <button onclick="posCheckout('card')" class="btn-success">💳 Card</button>
-                <button onclick="posCheckout('mobile')" class="btn-success">📱 Mobile</button>
-            </div>
-        </div>
-        
-        <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
-            <h3>📊 Today's Sales</h3>
-            <div id="pos-sales-info"></div>
-            
-            <h3 style="margin-top: 20px;">🔄 Recent Transactions</h3>
-            <div id="pos-recent-transactions" style="max-height: 300px; overflow-y: auto;"></div>
-        </div>
-    </div>
-</div>
+    
     <script>
         // ============================================
-        // SIMPLE WORKING VERSION - NO SYNTAX ERRORS
+        // SMART POS & BARCODE MODULE
+        // ============================================
+        
+        // Product database
+        const smartProducts = {
+            "LBN-250-LR-YIRG001": { name: "Yirgacheffe G1", roast: "Light Roast", weight: "250g", origin: "Ethiopia · Yirgacheffe", price: 28.99 },
+            "LBN-250-MR-SID002": { name: "Sidama Natural", roast: "Medium Roast", weight: "250g", origin: "Ethiopia · Sidama", price: 26.50 },
+            "LBN-250-MD-GUJI003": { name: "Guji Hambela", roast: "Medium-Dark", weight: "250g", origin: "Ethiopia · Guji", price: 31.99 },
+            "LBN-250-DR-LEGACY04": { name: "Legacy Reserve", roast: "Dark Roast", weight: "250g", origin: "Ethiopia · Blend", price: 34.99 },
+            "LBN-250-LR-LIMU005": { name: "Limu Special", roast: "Light Roast", weight: "250g", origin: "Ethiopia · Limu", price: 29.99 },
+            "LBN-250-MR-HARAR006": { name: "Harar Longberry", roast: "Medium Roast", weight: "250g", origin: "Ethiopia · Harar", price: 32.99 }
+        };
+        
+        let smartCart = [];
+        let currentSmartBarcode = "LBN-250-LR-YIRG001";
+        
+        // Generate barcode using JsBarcode
+        function generateSmartBarcode() {
+            if (typeof JsBarcode !== 'undefined') {
+                JsBarcode("#printBarcode", currentSmartBarcode, {
+                    format: "CODE128",
+                    width: 2,
+                    height: 60,
+                    displayValue: false,
+                    margin: 10,
+                    background: "#ffffff",
+                    lineColor: "#1a3a32"
+                });
+            }
+        }
+        
+        // Update product info from selector
+        function updateSmartProduct() {
+            const select = document.getElementById('productSelect');
+            const parts = select.value.split('|');
+            currentSmartBarcode = parts[0];
+            generateSmartBarcode();
+            document.getElementById('barcodeValueDisplay').innerText = currentSmartBarcode;
+            document.getElementById('infoName').innerText = parts[1];
+            document.getElementById('infoRoast').innerText = parts[2];
+            document.getElementById('infoWeight').innerText = parts[3];
+            document.getElementById('infoOrigin').innerText = parts[4];
+            document.getElementById('infoPrice').innerHTML = `$${parseFloat(parts[5]).toFixed(2)}`;
+        }
+        
+        // Refresh barcode
+        function refreshSmartBarcode() {
+            generateSmartBarcode();
+            showSmartFeedback("Barcode refreshed!", "info");
+        }
+        
+        // Print barcode
+        function printSmartBarcode() {
+            window.print();
+        }
+        
+        // Download barcode as PNG
+        function downloadSmartBarcode() {
+            const svg = document.querySelector("#printBarcode");
+            if (svg) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const data = new XMLSerializer().serializeToString(svg);
+                const img = new Image();
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const link = document.createElement('a');
+                    link.download = currentSmartBarcode + '.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                    showSmartFeedback("Barcode downloaded!", "success");
+                };
+                img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(data);
+            }
+        }
+        
+        // Update POS Cart Display
+        function updateSmartCartDisplay() {
+            const cartArea = document.getElementById('smartCartArea');
+            const totalSpan = document.getElementById('smartCartTotal');
+            
+            if (smartCart.length === 0) {
+                cartArea.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No items scanned yet<br>Scan a barcode to add product</div>';
+                totalSpan.innerText = "$0.00";
+                return;
+            }
+            
+            let html = '';
+            let total = 0;
+            smartCart.forEach((item, idx) => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                html += `
+                    <div class="pos-cart-item">
+                        <div style="flex:2">
+                            <div style="font-weight: bold;">${item.name}</div>
+                            <div style="font-size: 10px; color: #888;">${item.barcode}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button onclick="changeSmartQuantity(${idx}, -1)" style="background: #3a3a4a; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer; color: white;">-</button>
+                            <span style="min-width: 25px; text-align: center;">${item.quantity}</span>
+                            <button onclick="changeSmartQuantity(${idx}, 1)" style="background: #3a3a4a; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer; color: white;">+</button>
+                        </div>
+                        <div style="min-width: 70px; text-align: right; color: #D4AF37;">$${itemTotal.toFixed(2)}</div>
+                        <button onclick="removeSmartItem(${idx})" style="background: #5a2a2a; border: none; padding: 5px 12px; border-radius: 15px; margin-left: 10px; cursor: pointer;">✗</button>
+                    </div>
+                `;
+            });
+            cartArea.innerHTML = html;
+            totalSpan.innerText = `$${total.toFixed(2)}`;
+        }
+        
+        function changeSmartQuantity(index, delta) {
+            if (smartCart[index]) {
+                const newQty = smartCart[index].quantity + delta;
+                if (newQty <= 0) {
+                    smartCart.splice(index, 1);
+                } else {
+                    smartCart[index].quantity = newQty;
+                }
+                updateSmartCartDisplay();
+            }
+        }
+        
+        function removeSmartItem(index) {
+            smartCart.splice(index, 1);
+            updateSmartCartDisplay();
+            showSmartFeedback("Item removed from cart", "info");
+        }
+        
+        function clearSmartCart() {
+            if (smartCart.length === 0) {
+                showSmartFeedback("Cart is already empty", "warning");
+                return;
+            }
+            smartCart = [];
+            updateSmartCartDisplay();
+            showSmartFeedback("Cart cleared", "info");
+        }
+        
+        function smartCheckout(paymentMethod) {
+            if (smartCart.length === 0) {
+                showSmartFeedback("Cart is empty! Scan some items first.", "error");
+                return;
+            }
+            const total = smartCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const itemCount = smartCart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            alert(`🧾 LUBAN COFFEE RECEIPT\n\nItems: ${itemCount}\nTotal: $${total.toFixed(2)}\nPayment: ${paymentMethod.toUpperCase()}\n\nThank you! ☕`);
+            
+            showSmartFeedback(`🎉 CHECKOUT! ${itemCount} items · $${total.toFixed(2)}`, "success");
+            smartCart = [];
+            updateSmartCartDisplay();
+        }
+        
+        function addToSmartCart(barcode) {
+            const product = smartProducts[barcode];
+            if (!product) {
+                showSmartFeedback(`❌ Unknown barcode: ${barcode}`, "error");
+                return false;
+            }
+            
+            const existing = smartCart.find(item => item.barcode === barcode);
+            if (existing) {
+                existing.quantity++;
+                showSmartFeedback(`✅ Added another ${product.name}`, "success");
+            } else {
+                smartCart.push({
+                    barcode: barcode,
+                    name: product.name,
+                    price: product.price,
+                    quantity: 1
+                });
+                showSmartFeedback(`✅ Added: ${product.name} - $${product.price}`, "success");
+            }
+            updateSmartCartDisplay();
+            return true;
+        }
+        
+        function showSmartFeedback(message, type) {
+            const feedbackDiv = document.getElementById('smartPosFeedback');
+            feedbackDiv.innerHTML = `🔍 ${message}`;
+            if (type === "error") feedbackDiv.style.color = "#ff8888";
+            else if (type === "success") feedbackDiv.style.color = "#8bc34a";
+            else feedbackDiv.style.color = "#D4AF37";
+            
+            setTimeout(() => {
+                feedbackDiv.style.color = "#8bc34a";
+                feedbackDiv.innerHTML = "🔍 Ready to scan — Scanner will add items automatically";
+            }, 2500);
+        }
+        
+        // Scanner listener (real USB scanner)
+        function initSmartScanner() {
+            let scanBuffer = "";
+            let scanTimeout = null;
+            
+            document.addEventListener("keydown", function(event) {
+                if (event.target.tagName === "SELECT" || event.target.tagName === "BUTTON" || event.target.tagName === "INPUT") {
+                    return;
+                }
+                
+                if (event.key === "Enter") {
+                    if (scanBuffer.length > 3) {
+                        addToSmartCart(scanBuffer);
+                        scanBuffer = "";
+                        if (scanTimeout) clearTimeout(scanTimeout);
+                    }
+                    return;
+                }
+                
+                if (event.key.length === 1 || event.key === " " || /^[A-Za-z0-9\-]$/.test(event.key)) {
+                    scanBuffer += event.key;
+                    if (scanTimeout) clearTimeout(scanTimeout);
+                    scanTimeout = setTimeout(() => { scanBuffer = ""; }, 100);
+                }
+            });
+            
+            console.log("🔍 Scanner ready for Smart POS!");
+        }
+        
+        // Initialize Smart POS panel
+        function initSmartPos() {
+            updateSmartProduct();
+            initSmartScanner();
+        }
+        
+        // ============================================
+        // ORIGINAL DASHBOARD FUNCTIONS
         // ============================================
         
         var API_BASE = '';
@@ -274,7 +549,7 @@
             var activeNav = document.querySelector('.nav-item[data-panel="' + panelName + '"]');
             if (activeNav) activeNav.classList.add('active');
             
-            var titles = { dashboard: 'Dashboard', qr: 'QR Codes', barcode: 'Barcodes', pages: 'Landing Pages', products: 'Products', pos: 'POS Terminal', analytics: 'Analytics' };
+            var titles = { dashboard: 'Dashboard', qr: 'QR Codes', barcode: 'Barcodes', smartpos: 'Smart POS', pages: 'Landing Pages', products: 'Products', pos: 'POS Terminal', analytics: 'Analytics' };
             document.getElementById('page-title').innerText = titles[panelName] || panelName;
             
             if (panelName === 'dashboard') loadDashboard();
@@ -282,6 +557,7 @@
             if (panelName === 'products') loadProducts();
             if (panelName === 'pages') loadPageSelect();
             if (panelName === 'analytics') loadAnalytics();
+            if (panelName === 'smartpos') initSmartPos();
         }
         
         // Attach navigation
@@ -416,245 +692,7 @@
             })
             .catch(function(error) { console.error('Delete error:', error); });
         }
-        // ============================================
-// POS MACHINE FUNCTIONS - REAL SCANNER SUPPORT
-// ============================================
-
-var posCart = [];
-var lastScannedBarcode = '';
-var scanTimeout = null;
-
-// Auto-detect barcode scanner input (handles USB scanners)
-function initPOSScanner() {
-    var barcodeInput = document.getElementById('pos-barcode');
-    if (!barcodeInput) return;
-    
-    barcodeInput.addEventListener('keypress', function(e) {
-        // Barcode scanners typically send Enter key after scan
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            var barcode = this.value.trim();
-            if (barcode) {
-                posProcessScan(barcode);
-                this.value = '';
-            }
-        }
-    });
-    
-    // Also handle manual entry
-    var manualInput = document.getElementById('pos-manual-id');
-    if (manualInput) {
-        manualInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                var id = this.value.trim();
-                if (id) {
-                    posProcessScan(id);
-                    this.value = '';
-                }
-            }
-        });
-    }
-}
-
-// Process scanned barcode
-function posProcessScan(barcode) {
-    showAlert('🔍 Scanning: ' + barcode, 'success');
-    
-    // Call POS scan endpoint
-    fetch('/api/pos/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            barcode: barcode,
-            posTerminalId: 'WEB-TERMINAL-01',
-            cashierName: 'Admin'
-        })
-    })
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-        if (data.success) {
-            // Check if product already in cart
-            var existingItem = posCart.find(function(item) { return item.barcode === barcode; });
-            if (existingItem) {
-                existingItem.quantity++;
-                existingItem.total = existingItem.quantity * existingItem.price;
-                showAlert('✅ Updated quantity: ' + existingItem.name, 'success');
-            } else {
-                posCart.push({
-                    barcode: barcode,
-                    name: data.product.name,
-                    price: data.product.price,
-                    quantity: 1,
-                    total: data.product.price
-                });
-                showAlert('✅ Added: ' + data.product.name, 'success');
-            }
-            posUpdateCartDisplay();
-        } else {
-            showAlert('❌ ' + (data.message || 'Product not found'), 'error');
-        }
-    })
-    .catch(function(error) {
-        // Fallback for testing - add mock product
-        showAlert('⚠️ Using test mode - Product added for testing', 'warning');
-        posCart.push({
-            barcode: barcode,
-            name: 'Test Coffee Product',
-            price: 24.99,
-            quantity: 1,
-            total: 24.99
-        });
-        posUpdateCartDisplay();
-    });
-}
-
-function posAddToCart() {
-    var barcode = document.getElementById('pos-barcode').value.trim();
-    var manualId = document.getElementById('pos-manual-id').value.trim();
-    var scanValue = barcode || manualId;
-    
-    if (!scanValue) {
-        showAlert('Please scan a barcode or enter product ID', 'error');
-        return;
-    }
-    
-    posProcessScan(scanValue);
-    document.getElementById('pos-barcode').value = '';
-    document.getElementById('pos-manual-id').value = '';
-}
-
-function posUpdateCartDisplay() {
-    var html = '';
-    var total = 0;
-    
-    for (var i = 0; i < posCart.length; i++) {
-        var item = posCart[i];
-        total += item.total;
-        html += '<div style="display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">';
-        html += '<div><strong>' + item.name + '</strong><br><small style="color: #888;">' + item.barcode + '</small></div>';
-        html += '<div style="text-align: right;">';
-        html += '<div>$' + item.price.toFixed(2) + ' x ' + item.quantity + '</div>';
-        html += '<div style="color: #D4AF37;">$' + item.total.toFixed(2) + '</div>';
-        html += '<button onclick="posRemoveFromCart(' + i + ')" class="btn-sm btn-danger" style="margin-top: 5px;">Remove</button>';
-        html += '</div></div>';
-    }
-    
-    document.getElementById('pos-cart-items').innerHTML = html || '<p style="text-align: center; color: #888;">Empty cart</p>';
-    document.getElementById('pos-cart-total').innerHTML = 'Total: $' + total.toFixed(2);
-}
-
-function posRemoveFromCart(index) {
-    posCart.splice(index, 1);
-    posUpdateCartDisplay();
-    showAlert('Item removed from cart', 'success');
-}
-
-function posClearCart() {
-    if (posCart.length === 0) {
-        showAlert('Cart is already empty', 'warning');
-        return;
-    }
-    if (confirm('Clear entire cart?')) {
-        posCart = [];
-        posUpdateCartDisplay();
-        showAlert('Cart cleared', 'success');
-    }
-}
-
-function posCheckout(paymentMethod) {
-    if (posCart.length === 0) {
-        showAlert('Cart is empty. Add items first.', 'error');
-        return;
-    }
-    
-    var total = posCart.reduce(function(sum, item) { return sum + item.total; }, 0);
-    
-    showAlert('Processing checkout...', 'success');
-    
-    fetch('/api/pos/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            items: posCart,
-            total: total,
-            paymentMethod: paymentMethod,
-            cashierName: 'Admin',
-            posTerminalId: 'WEB-TERMINAL-01'
-        })
-    })
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-        if (data.success) {
-            showAlert('✅ Checkout complete! Total: $' + total.toFixed(2), 'success');
-            
-            // Print receipt simulation
-            var receipt = '=== LUBAN COFFEE ===\n';
-            receipt += 'Date: ' + new Date().toLocaleString() + '\n';
-            receipt += 'Transaction: ' + data.transactionId + '\n';
-            receipt += '---\n';
-            for (var i = 0; i < posCart.length; i++) {
-                receipt += posCart[i].name + ' x' + posCart[i].quantity + ' = $' + posCart[i].total.toFixed(2) + '\n';
-            }
-            receipt += '---\n';
-            receipt += 'Total: $' + total.toFixed(2) + '\n';
-            receipt += 'Payment: ' + paymentMethod.toUpperCase() + '\n';
-            receipt += 'Thank you for choosing Luban Coffee!\n';
-            
-            console.log('Receipt:\n' + receipt);
-            
-            posCart = [];
-            posUpdateCartDisplay();
-            posLoadTodaySales();
-        } else {
-            showAlert('Checkout failed: ' + (data.error || 'Unknown error'), 'error');
-        }
-    })
-    .catch(function(error) {
-        // Test mode fallback
-        showAlert('✅ TEST MODE: Checkout complete! Total: $' + total.toFixed(2), 'success');
-        posCart = [];
-        posUpdateCartDisplay();
-    });
-}
-
-function posLoadTodaySales() {
-    fetch('/api/pos/sales/today')
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-        if (data.success) {
-            var sales = data.sales;
-            document.getElementById('pos-sales-info').innerHTML = `
-                <div class="stat-card">
-                    <div class="stat-value">$${sales.total_sales.toFixed(2)}</div>
-                    <div>Today's Sales</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${sales.transaction_count}</div>
-                    <div>Transactions</div>
-                </div>
-            `;
-        }
-    })
-    .catch(function(error) {
-        document.getElementById('pos-sales-info').innerHTML = '<p>No sales data</p>';
-    });
-}
-
-// Initialize POS when panel opens
-function initPOSPanel() {
-    initPOSScanner();
-    posLoadTodaySales();
-}
-
-// Call this when POS panel is shown
-var originalShowPanel = showPanel;
-showPanel = function(panelName) {
-    originalShowPanel(panelName);
-    if (panelName === 'pos') {
-        setTimeout(initPOSPanel, 100);
-    }
-};
+        
         // Landing Pages
         var landingPages = [
             { name: '🏠 Home Page', url: '/' }, { name: '🛒 Shop All', url: '/shop.html' },
@@ -711,10 +749,7 @@ showPanel = function(panelName) {
             }).catch(function(e) { console.error('Batch error:', e); });
         }
         
-               // ============================================
-        // BARCODE FUNCTIONS WITH DOWNLOAD OPTION
-        // ============================================
-        
+        // Barcode Functions
         var isGenerating = false;
         
         function generatePremiumBarcodes() {
@@ -760,18 +795,15 @@ showPanel = function(panelName) {
                 })
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
-                    // Save to database
                     fetch('/api/barcode/save', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ barcode: barcodeValue, weight: weight, roast: roast })
                     }).catch(function(e) { console.log('Save error:', e); });
                     
-                    var imageId = 'img_' + Date.now() + '_' + index;
-                    
                     html += '<div class="code-item" style="text-align:center;">';
                     if (data && data.image) {
-                        html += '<img id="' + imageId + '" src="' + data.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
+                        html += '<img src="' + data.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
                         html += '<div><button onclick="downloadSingleBarcode(\'' + data.image + '\', \'' + barcodeValue + '\')" class="btn-sm" style="margin-top:8px;">📥 Download PNG</button></div>';
                     } else {
                         html += '<div style="font-family:monospace; font-size:16px; padding:20px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div>';
@@ -799,7 +831,6 @@ showPanel = function(panelName) {
             generateNext(0);
         }
         
-        // Download single barcode
         function downloadSingleBarcode(imageData, barcodeName) {
             var a = document.createElement('a');
             a.href = imageData;
@@ -808,17 +839,15 @@ showPanel = function(panelName) {
             showAlert('Downloaded: ' + barcodeName, 'success');
         }
         
-        // Download all barcodes as ZIP (creates multiple downloads)
         function downloadAllBarcodes() {
             var images = document.querySelectorAll('#barcode-result img');
             if (images.length === 0) {
                 showAlert('No barcodes to download', 'error');
                 return;
             }
-            
             for (var i = 0; i < images.length; i++) {
                 var img = images[i];
-                var barcodeText = img.parentElement.parentElement.querySelector('div[style*="monospace"] strong')?.innerText || 'barcode_' + i;
+                var barcodeText = img.parentElement.parentElement.querySelector('strong')?.innerText || 'barcode_' + i;
                 var a = document.createElement('a');
                 a.href = img.src;
                 a.download = barcodeText + '.png';
@@ -827,10 +856,8 @@ showPanel = function(panelName) {
             showAlert('Downloaded ' + images.length + ' barcodes', 'success');
         }
         
-        // Test scan a barcode
         function testScanBarcode(barcodeValue) {
             showAlert('🔍 Testing barcode: ' + barcodeValue, 'success');
-            
             fetch('/api/barcode/verify/' + barcodeValue)
             .then(function(response) { return response.json(); })
             .then(function(data) {
@@ -851,39 +878,29 @@ showPanel = function(panelName) {
             });
         }
         
-        // Load saved barcodes from database
         function loadSavedBarcodes() {
             showAlert('Loading saved barcodes...', 'success');
-            
             fetch('/api/barcode/list')
             .then(function(response) { return response.json(); })
             .then(function(data) {
                 var barcodes = data.barcodes || [];
-                
                 if (barcodes.length === 0) {
                     document.getElementById('barcode-result').innerHTML = '<p style="text-align:center; padding:40px;">No saved barcodes found. Generate some first!</p>';
                     return;
                 }
-                
-                var html = '<h4>📋 Saved Barcodes (' + barcodes.length + '):</h4>';
-                html += '<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:15px;">';
-                
+                var html = '<h4>📋 Saved Barcodes (' + barcodes.length + '):</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:15px;">';
                 for (var i = 0; i < barcodes.length; i++) {
                     var b = barcodes[i];
                     var barcodeValue = b.barcode_value || b.id || 'N/A';
                     var createdDate = b.created_at ? new Date(b.created_at).toLocaleDateString() : 'Unknown';
-                    
-                    html += '<div class="code-item">';
-                    html += '<div style="font-family:monospace; font-size:14px;"><strong>' + barcodeValue + '</strong></div>';
+                    html += '<div class="code-item"><div style="font-family:monospace; font-size:14px;"><strong>' + barcodeValue + '</strong></div>';
                     html += '<div style="font-size:12px;">Created: ' + createdDate + '</div>';
                     html += '<div style="font-size:12px;">Weight: ' + (b.weight_grams || 250) + 'g | Roast: ' + (b.roast_level || 'MR') + '</div>';
                     html += '<div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">';
                     html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy Barcode</button>';
                     html += '<button onclick="testScanBarcode(\'' + barcodeValue + '\')" class="btn-sm">🔍 Test Scan</button>';
-                    html += '</div>';
-                    html += '</div>';
+                    html += '</div></div>';
                 }
-                
                 html += '</div>';
                 document.getElementById('barcode-result').innerHTML = html;
             })
@@ -937,7 +954,6 @@ showPanel = function(panelName) {
             var qrId = document.getElementById('page-qr-select').value;
             var type = document.getElementById('page-type').value;
             if (!qrId) { showAlert('Select a QR code', 'error'); return; }
-            
             if (type === 'redirect') {
                 var destination = document.getElementById('page-destination').value;
                 if (!destination) { showAlert('Enter URL', 'error'); return; }
@@ -971,7 +987,7 @@ showPanel = function(panelName) {
             .catch(function(error) { document.getElementById('products-list').innerHTML = '<p>Error loading products</p>'; });
         }
         
-        // POS
+        // POS (Original)
         function addToCart() {
             var barcode = document.getElementById('pos-barcode').value.trim();
             if (!barcode) { showAlert('Scan barcode', 'error'); return; }

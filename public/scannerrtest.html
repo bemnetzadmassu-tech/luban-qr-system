@@ -1,0 +1,55 @@
+function testScreenScanning() {
+    // Generate a simple numeric barcode (same format as your working one)
+    var testNumber = '4032900105703';  // Your working barcode
+    
+    var testWindow = window.open('', '_blank');
+    testWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Scanner Test</title>
+            <style>
+                body {
+                    background: white;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 100vh;
+                    margin: 0;
+                }
+                .container {
+                    text-align: center;
+                    background: white;
+                    padding: 50px;
+                }
+                .barcode {
+                    background: white;
+                    padding: 30px;
+                    margin: 20px;
+                }
+                .barcode img {
+                    width: 100%;
+                    max-width: 400px;
+                }
+                .number {
+                    font-size: 24px;
+                    font-family: monospace;
+                    margin: 20px;
+                    letter-spacing: 2px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h2>Test Barcode (Same as your printed one)</h2>
+                <div class="barcode">
+                    <img src="https://barcode.tec-it.com/barcode.ashx?data=${testNumber}&code=EAN13&dpi=96">
+                </div>
+                <div class="number">${testNumber}</div>
+                <p>If scanner reads this from screen, the issue is Code 128 format</p>
+                <p>If NOT reading, the issue is screen brightness/angle</p>
+            </div>av
+        </body>
+        </html>
+    `);
+}
