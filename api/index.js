@@ -461,7 +461,126 @@ app.post('/api/barcode/save', async (req, res) => {
         res.json({ success: true });
     }
 });
+// ============================================
+// POS MACHINE ENDPOINTS - FOR ACTUAL SCANNER
+// ============================================
 
+// POS Scan Endpoint - Called when cashier scans barcode
+app.post('/api/pos/scan', async (req, res) => {
+    const { barcode, posTerminalId, cashierName } = req.body;
+    
+    try {
+        console.log('🔍 POS Scan request:', barcode);
+        
+        // Check if barcode exists in qr_codes table
+        const result = await db.query(
+            'SELECT id, product_name, product_price, scan_count FROM qr_codes WHERE id = $1',
+            [barcode]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Barcode not found',
+                message: 'Product not found in inventory'
+            });
+        }
+        
+        const product = result.rows[0];
+        
+        // Check if already sold (optional - prevent double sale)
+        const isSold = product.scan_count > 0; // Simple check
+        
+        res.json({
+            success: true,
+            product: {
+                barcode: product.id,
+                name: product.product_name || 'Luban Coffee Product',
+                price: parseFloat(product.product_price) || 24.99,
+                isSold: isSold
+            },
+            message: 'Product found'
+        });
+        
+    } catch (error) {
+        console.error('POS scan error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POS Add to Cart / Checkout
+app.post('/api/pos/checkout', async (req, res) => {
+    const { items, total, paymentMethod, cashierName, posTerminalId } = req.body;
+    const transactionId = 'TXN-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+    
+    try {
+        // Create transaction record
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS pos_transactions (
+                id SERIAL PRIMARY KEY,
+                transaction_id TEXT UNIQUE,
+                items JSONB,
+                total_amount DECIMAL(10,2),
+                payment_method TEXT,
+                cashier_name TEXT,
+                pos_terminal_id TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Save transaction
+        await db.query(
+            `INSERT INTO pos_transactions (transaction_id, items, total_amount, payment_method, cashier_name, pos_terminal_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [transactionId, JSON.stringify(items), total, paymentMethod, cashierName, posTerminalId]
+        );
+        
+        // Update scan counts for each sold item
+        for (var i = 0; i < items.length; i++) {
+            await db.query(
+                'UPDATE qr_codes SET scan_count = scan_count + 1, last_barcode_scanned = CURRENT_TIMESTAMP WHERE id = $1',
+                [items[i].barcode]
+            );
+        }
+        
+        res.json({
+            success: true,
+            transactionId: transactionId,
+            message: 'Checkout completed successfully',
+            receipt: {
+                transactionId: transactionId,
+                items: items.length,
+                total: total,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
+    } catch (error) {
+        console.error('Checkout error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get today's sales for POS
+app.get('/api/pos/sales/today', async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT 
+                COUNT(*) as transaction_count,
+                COALESCE(SUM(total_amount), 0) as total_sales,
+                COUNT(DISTINCT cashier_name) as cashier_count
+            FROM pos_transactions 
+            WHERE DATE(created_at) = CURRENT_DATE
+        `);
+        
+        res.json({
+            success: true,
+            sales: result.rows[0] || { transaction_count: 0, total_sales: 0, cashier_count: 0 }
+        });
+    } catch (error) {
+        res.json({ success: true, sales: { transaction_count: 0, total_sales: 0, cashier_count: 0 } });
+    }
+});
 // ============================================
 // GET ALL SAVED BARCODES
 // ============================================
