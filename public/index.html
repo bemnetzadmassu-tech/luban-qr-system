@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Luban Global - Multi-industry excellence in coffee sourcing, industrial mineral export, system design, and chemical import. Global trade partner since 2025.">
+  <meta name="keywords" content="coffee sourcing, industrial minerals, system design, chemical import, global trade, Luban">
+  <meta name="author" content="Luban Global">
+  <title>Luban Global | Multi-Industry Excellence</title>
+  <!-- Google Fonts + simple reset -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #fefcf8;
+      color: #1e1e2a;
+      scroll-behavior: smooth;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* header / navigation */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 24px 0;
+      border-bottom: 1px solid #e9e6df;
+    }
+
+    .logo h1 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #2B5E3B, #B87C4F);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .logo span {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #6c5b4b;
+      letter-spacing: 0.8px;
+      display: block;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      font-weight: 500;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: #2d2a24;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: #B87C4F;
+    }
+
+    /* buttons */
+    .btn-primary {
+      background: #1e3a2f;
+      color: white;
+      padding: 12px 28px;
+      border-radius: 40px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-block;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      background: #B87C4F;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(184, 124, 79, 0.2);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid #1e3a2f;
+      color: #1e3a2f;
+      padding: 10px 24px;
+      border-radius: 40px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: 0.2s;
+    }
+
+    .btn-outline:hover {
+      background: #1e3a2f;
+      color: white;
+    }
+
+    /* hero section */
+    .hero {
+      padding: 64px 0 56px 0;
+      text-align: center;
+    }
+
+    .badge {
+      background: #ece6dc;
+      color: #5a3e2b;
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .hero h2 {
+      font-size: 3.5rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: #1e2a21;
+      max-width: 900px;
+      margin: 0 auto 24px;
+    }
+
+    .hero h2 span {
+      background: linear-gradient(120deg, #2B5E3B, #C77A4A);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: #4a4a55;
+      max-width: 720px;
+      margin: 0 auto 32px;
+      line-height: 1.5;
+    }
+
+    /* pillars / divisions grid */
+    .divisions {
+      padding: 70px 0 40px;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 2.2rem;
+      font-weight: 600;
+      margin-bottom: 48px;
+      color: #1e2a21;
+      position: relative;
+    }
+
+    .section-title:after {
+      content: '';
+      display: block;
+      width: 70px;
+      height: 3px;
+      background: #B87C4F;
+      margin: 16px auto 0;
+      border-radius: 4px;
+    }
+
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 30px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 28px;
+      padding: 32px 24px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
+      transition: all 0.25s ease;
+      border: 1px solid #f0ede7;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 24px 40px rgba(0, 0, 0, 0.08);
+      border-color: #e2d9ce;
+    }
+
+    .card-icon {
+      font-size: 3rem;
+      margin-bottom: 20px;
+    }
+
+    .card h3 {
+      font-size: 1.7rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      letter-spacing: -0.3px;
+    }
+
+    .coffee h3 { color: #A5673F; }
+    .minerals h3 { color: #5A6E4B; }
+    .systems h3 { color: #2F5E6B; }
+    .chemicals h3 { color: #9B6A6A; }
+
+    .card p {
+      color: #4e4e5c;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      margin: 16px 0 10px;
+    }
+
+    .card-link {
+      display: inline-block;
+      margin-top: 20px;
+      font-weight: 600;
+      text-decoration: none;
+      color: #B87C4F;
+      border-bottom: 1px solid #eedbcb;
+    }
+
+    /* global presence stats */
+    .stats {
+      background: #f4efe7;
+      margin: 60px 0 30px;
+      border-radius: 48px;
+      padding: 48px 32px;
+    }
+
+    .stats-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 24px;
+      text-align: center;
+    }
+
+    .stat-item h4 {
+      font-size: 2.3rem;
+      font-weight: 800;
+      color: #1e3a2f;
+    }
+
+    .stat-item p {
+      color: #5f5343;
+      font-weight: 500;
+    }
+
+    /* contact + cta */
+    .cta-section {
+      background: linear-gradient(110deg, #1a2c22 0%, #2a4233 100%);
+      border-radius: 48px;
+      padding: 64px 40px;
+      margin: 64px 0 70px;
+      text-align: center;
+      color: white;
+    }
+
+    .cta-section h3 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .cta-section p {
+      max-width: 560px;
+      margin: 0 auto 32px;
+      opacity: 0.85;
+    }
+
+    .contact-form {
+      max-width: 540px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .contact-form input, .contact-form select {
+      flex: 1 1 200px;
+      padding: 14px 20px;
+      border-radius: 60px;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      background: #fefcf8;
+    }
+
+    .contact-form button {
+      background: #B87C4F;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 60px;
+      font-weight: 700;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .contact-form button:hover {
+      background: #e09d6e;
+    }
+
+    footer {
+      border-top: 1px solid #e9e3da;
+      padding: 40px 0 32px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+      font-size: 0.85rem;
+      color: #706c64;
+    }
+
+    .footer-links a {
+      color: #706c64;
+      text-decoration: none;
+      margin-left: 24px;
+    }
+
+    .footer-links a:hover {
+      color: #B87C4F;
+    }
+
+    @media (max-width: 750px) {
+      .navbar {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+      }
+      .hero h2 {
+        font-size: 2.2rem;
+      }
+      .section-title {
+        font-size: 1.8rem;
+      }
+      .cta-section {
+        padding: 40px 24px;
+      }
+      .stats-grid {
+        justify-content: center;
+      }
+      footer {
+        flex-direction: column;
+        text-align: center;
+      }
+      .footer-links a {
+        margin: 0 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header with .global brand -->
+  <div class="navbar">
+    <div class="logo">
+      <h1>LUBAN<span>.global</span></h1>
+    </div>
+    <div class="nav-links">
+      <a href="#home">Home</a>
+      <a href="#divisions">Divisions</a>
+      <a href="#contact">Global Reach</a>
+    </div>
+  </div>
+
+  <!-- Hero Section -->
+  <div class="hero" id="home">
+    <div class="badge">🌍 multi‑industry | global trade & innovation</div>
+    <h2>Your trusted partner across <span>coffee, minerals, systems & chemicals</span></h2>
+    <p>Luban Global bridges continents with integrity — from sustainable coffee sourcing to industrial mineral export, bespoke system architecture, and responsible chemical import.</p>
+    <a href="#contact" class="btn-primary">Partner with Luban →</a>
+  </div>
+</div>
+
+<!-- Four business pillars (clickable cards that link to division pages) -->
+<div class="container" id="divisions">
+  <div class="divisions">
+    <div class="section-title">Core Divisions</div>
+    <div class="grid-cards">
+      <!-- Coffee Division - links to coffee.html -->
+      <a href="coffee.html" class="card coffee">
+        <div class="card-icon">☕</div>
+        <h3>Coffee</h3>
+        <p>Specialty green beans, direct‑trade relationships, and sustainable logistics from origin to roastery. Premium Arabica & robust traceability.</p>
+        <span class="card-link">Discover sourcing →</span>
+      </a>
+      <!-- Industrial Minerals Export - links to minerals.html -->
+      <a href="minerals.html" class="card minerals">
+        <div class="card-icon">⛏️</div>
+        <h3>Industrial Minerals</h3>
+        <p>High‑grade barite, bentonite, fluorspar & more. Bulk export with rigorous quality control for oil, drilling, and construction industries.</p>
+        <span class="card-link">Request spec sheet →</span>
+      </a>
+      <!-- System Design - links to systems.html -->
+      <a href="systems.html" class="card systems">
+        <div class="card-icon">⚙️</div>
+        <h3>System Design</h3>
+        <p>Custom software architecture, ERP integration, and digital transformation for industrial clients — turning complexity into efficiency.</p>
+        <span class="card-link">Consult an engineer →</span>
+      </a>
+      <!-- Chemical Import - links to chemicals.html -->
+      <a href="chemicals.html" class="card chemicals">
+        <div class="card-icon">🧪</div>
+        <h3>Chemical Import</h3>
+        <p>Responsible sourcing of industrial solvents, intermediates, and specialty chemicals. Regulatory compliance & global supply chain safety.</p>
+        <span class="card-link">Get a quote →</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Global footprint stats / credibility -->
+<div class="container">
+  <div class="stats">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <h4>15+</h4>
+        <p>Countries served</p>
+      </div>
+      <div class="stat-item">
+        <h4>4</h4>
+        <p>Strategic hubs</p>
+      </div>
+      <div class="stat-item">
+        <h4>120+</h4>
+        <p>B2B partners</p>
+      </div>
+      <div class="stat-item">
+        <h4>ISO & GMP</h4>
+        <p>Certified standards</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Contact & Consultation section (lead generation) -->
+<div class="container" id="contact">
+  <div class="cta-section">
+    <h3>Expand your business with Luban Global</h3>
+    <p>Tell us about your needs — coffee procurement, mineral sourcing, system architecture or chemical supply. Our team replies within 24h.</p>
+    <form class="contact-form" id="mainContactForm" method="post">
+      <input type="text" name="fullname" placeholder="Full name" required>
+      <input type="email" name="email" placeholder="Work email" required>
+      <select name="interest" required>
+        <option value="" disabled selected>I'm interested in...</option>
+        <option value="coffee">Coffee wholesale / green beans</option>
+        <option value="minerals">Industrial minerals export</option>
+        <option value="systems">System design & digital solutions</option>
+        <option value="chemicals">Chemical import & compliance</option>
+        <option value="multiple">Multiple divisions / partnership</option>
+      </select>
+      <button type="submit">Request consultation →</button>
+    </form>
+    <p style="font-size: 0.8rem; margin-top: 24px; opacity: 0.7;">We respect your privacy. No spam, only relevant trade updates.</p>
+  </div>
+</div>
+
+<!-- Footer with global footprint message -->
+<div class="container">
+  <footer>
+    <div>© 2025 Luban Global — unifying industries, delivering excellence worldwide.</div>
+    <div class="footer-links">
+      <span>📧 hello@luban.global</span>
+      <span>📍 HQ: Singapore | Dubai | Istanbul</span>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+    </div>
+  </footer>
+</div>
+
+<!-- Simple form handler that saves to localStorage (can be upgraded to database later) -->
+<script>
+  const form = document.getElementById('mainContactForm');
+  
+  if(form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Get form data
+      const formData = {
+        name: form.querySelector('[name="fullname"]').value,
+        email: form.querySelector('[name="email"]').value,
+        interest: form.querySelector('[name="interest"]').value,
+        timestamp: new Date().toISOString(),
+        page: 'index.html'
+      };
+      
+      // Save to localStorage (temporary storage - upgrade to database later)
+      let leads = JSON.parse(localStorage.getItem('luban_leads') || '[]');
+      leads.push(formData);
+      localStorage.setItem('luban_leads', JSON.stringify(leads));
+      
+      // Show success message
+      alert('Thank you! A Luban Global representative will contact you within 24 hours.');
+      
+      // Optional: Send to email via FormSubmit or similar service
+      // Uncomment the lines below to integrate with FormSubmit.co (free)
+      /*
+      const formSubmitUrl = 'https://formsubmit.co/ajax/hello@luban.global';
+      fetch(formSubmitUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      }).catch(console.error);
+      */
+      
+      form.reset();
+    });
+  }
+  
+  // Optional: Display number of leads in console (admin only)
+  console.log('Luban Global website loaded. Lead count:', JSON.parse(localStorage.getItem('luban_leads') || '[]').length);
+</script>
+</body>
+</html>
