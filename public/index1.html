@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luban Coffee - Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f1a; color: white; }
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); border-right: 1px solid rgba(255,255,255,0.1); padding: 20px; overflow-y: auto; }
+        .logo { font-size: 24px; font-weight: bold; background: linear-gradient(135deg, #F2D57E, #D4AF37); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .nav-item { padding: 12px 16px; margin: 8px 0; border-radius: 12px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 12px; }
+        .nav-item:hover, .nav-item.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .main-content { margin-left: 260px; padding: 20px 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .page-title { font-size: 28px; font-weight: 600; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border-radius: 20px; padding: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .stat-value { font-size: 32px; font-weight: bold; color: #D4AF37; }
+        .panel { display: none; animation: fadeIn 0.3s; }
+        .panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .data-table { width: 100%; background: rgba(255,255,255,0.05); border-radius: 16px; overflow: hidden; }
+        .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .data-table th { background: rgba(0,0,0,0.3); font-weight: 600; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 500; color: #ccc; }
+        input, select, textarea { width: 100%; padding: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: white; font-size: 14px; }
+        button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 30px; cursor: pointer; font-weight: 600; transition: transform 0.2s; }
+        button:hover { transform: translateY(-2px); }
+        .btn-secondary { background: rgba(255,255,255,0.1); }
+        .btn-danger { background: #dc3545; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .color-row { display: flex; gap: 10px; align-items: center; }
+        .code-item { background: rgba(255,255,255,0.05); padding: 15px; margin-bottom: 10px; border-radius: 12px; border-left: 3px solid #D4AF37; }
+        .alert { padding: 12px 20px; border-radius: 10px; margin-bottom: 20px; animation: slideDown 0.3s; }
+        .alert-success { background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; color: #28a745; }
+        .alert-error { background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #dc3545; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 768px) { .sidebar { width: 70px; } .sidebar span { display: none; } .main-content { margin-left: 70px; } .stats-grid { grid-template-columns: 1fr; } }
+        
+        /* Smart POS Panel Styles */
+        .smartpos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .barcode-preview { background: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        .product-details-card { background: rgba(212,175,55,0.1); border-radius: 12px; padding: 15px; margin-bottom: 20px; }
+        .product-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(212,175,55,0.2); }
+        .product-row:last-child { border-bottom: none; }
+        .pos-cart-item { background: #2d2d3d; border-radius: 10px; padding: 10px 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid #D4AF37; }
+        .pos-total { background: #1a1a2a; padding: 15px 20px; display: flex; justify-content: space-between; border-top: 1px solid #3a3a4a; }
+        .pos-feedback { background: #2a2a3a; padding: 10px 15px; font-size: 12px; color: #8bc34a; font-family: monospace; }
+        .btn-cash { background: #28a745; }
+        .btn-card { background: #17a2b8; }
+        .btn-mobile { background: #ffc107; color: #1a1a2e; }
+        @media (max-width: 768px) { .smartpos-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">☕ LUBAN</div>
+        <nav>
+            <div class="nav-item active" data-panel="dashboard"><span>📊</span><span>Dashboard</span></div>
+            <div class="nav-item" data-panel="qr"><span>📱</span><span>QR Codes</span></div>
+            <div class="nav-item" data-panel="barcode"><span>🏷️</span><span>Barcodes</span></div>
+            <div class="nav-item" data-panel="smartpos"><span>🖨️</span><span>Smart POS</span></div>
+            <div class="nav-item" data-panel="pages"><span>📄</span><span>Landing Pages</span></div>
+            <div class="nav-item" data-panel="products"><span>☕</span><span>Products</span></div>
+            <div class="nav-item" data-panel="pos"><span>💳</span><span>POS Terminal</span></div>
+            <div class="nav-item" data-panel="analytics"><span>📈</span><span>Analytics</span></div>
+        </nav>
+    </div>
+    
+    <div class="main-content">
+        <div class="header">
+            <h1 class="page-title" id="page-title">Dashboard</h1>
+            <button onclick="refreshAllData()" style="padding: 5px 15px;">🔄 Refresh</button>
+        </div>
+        <div id="alert-container"></div>
+        
+        <!-- Dashboard Panel -->
+        <div id="dashboard-panel" class="panel active">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-value" id="total-qr">0</div><div>Total QR Codes</div></div>
+                <div class="stat-card"><div class="stat-value" id="total-scans">0</div><div>Total Scans</div></div>
+                <div class="stat-card"><div class="stat-value" id="active-products">0</div><div>Active Products</div></div>
+                <div class="stat-card"><div class="stat-value" id="inventory-stock">0</div><div>Units in Stock</div></div>
+            </div>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;"><h3>📊 Scan Trends</h3><canvas id="scanChart" style="max-height: 300px;"></canvas></div>
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;"><h3>📋 Recent QR Codes</h3><div id="recent-codes" style="max-height: 300px; overflow-y: auto;"></div></div>
+            </div>
+        </div>
+        
+        <!-- QR Panel -->
+        <div id="qr-panel" class="panel">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                    <h3>Generate QR Code</h3>
+                    <div class="form-group"><label>QR Code ID</label><input type="text" id="qr-id" placeholder="COF001"></div>
+                    <div class="form-group"><label>Destination URL</label><input type="url" id="qr-dest" placeholder="https://lubancoffee.et/"></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group"><label>Dark Color</label><div class="color-row"><input type="color" id="qr-dark" value="#D4AF37"><input type="text" id="qr-dark-hex" value="#D4AF37"></div></div>
+                        <div class="form-group"><label>Light Color</label><div class="color-row"><input type="color" id="qr-light" value="#FFFFFF"><input type="text" id="qr-light-hex" value="#FFFFFF"></div></div>
+                    </div>
+                    <button onclick="generateQR()">🚀 Generate QR Code</button>
+                    <div id="qr-result" style="margin-top: 20px; text-align: center;"></div>
+                </div>
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                    <h3>Manage QR Codes</h3>
+                    <button class="btn-secondary" onclick="loadQRCodes()">🔄 Refresh</button>
+                    <button onclick="showBatchQRGenerator()" class="btn-secondary">📦 Batch Generate</button>
+                    <div style="margin: 15px 0; padding: 15px; background: rgba(212,175,55,0.1); border-radius: 12px;">
+                        <h4 style="color: #D4AF37;">📄 Landing Pages Library</h4>
+                        <div id="landing-pages-list" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+                        <p style="font-size: 12px; margin-top: 10px;">💡 Click any landing page to auto-fill URL</p>
+                    </div>
+                    <div id="qr-list" style="max-height: 500px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Batch QR Modal -->
+        <div id="batchQRModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; padding: 50px;">
+            <div style="background: #1a1a2e; max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 20px;">
+                <h3>📦 Batch Generate QR Codes</h3>
+                <div class="form-group"><label>Prefix</label><input type="text" id="batch-prefix" placeholder="COF"></div>
+                <div class="form-group"><label>Start Number</label><input type="number" id="batch-start" value="1"></div>
+                <div class="form-group"><label>End Number</label><input type="number" id="batch-end" value="10"></div>
+                <div class="form-group"><label>Destination URL Base</label><input type="url" id="batch-dest" placeholder="https://lubancoffee.et/product/"></div>
+                <button onclick="generateBatchQRs()">🚀 Generate Batch</button>
+                <button onclick="closeBatchModal()" class="btn-secondary">Cancel</button>
+                <div id="batchResult" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+        
+        <!-- Barcode Panel -->
+        <div id="barcode-panel" class="panel">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>📊 Generate Premium Barcode</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px;">
+                    <div class="form-group"><label>Weight (g)</label><input type="number" id="barcode-weight" value="250"></div>
+                    <div class="form-group"><label>Roast Code</label><select id="barcode-roast"><option value="LR">Light Roast</option><option value="MR" selected>Medium Roast</option><option value="DR">Dark Roast</option></select></div>
+                    <div class="form-group"><label>Quantity</label><input type="number" id="barcode-qty" value="5"></div>
+                    <div class="form-group"><label>Color</label><input type="color" id="barcode-color" value="#D4AF37"></div>
+                </div>
+                <button onclick="generatePremiumBarcodes()">📊 Generate Barcodes</button>
+                <button onclick="loadSavedBarcodes()" class="btn-secondary" style="margin-left: 10px;">📋 View Saved</button>
+                <div id="barcode-result" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+        
+        <!-- SMART POS & BARCODE PANEL (NEW) -->
+        <div id="smartpos-panel" class="panel">
+            <div class="smartpos-grid">
+                <!-- LEFT: Smart Barcode Generator -->
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 25px;">
+                    <h3 style="color: #D4AF37; margin-bottom: 20px;">🖨️ Smart Barcode Generator</h3>
+                    <p style="font-size: 12px; color: #888; margin-bottom: 15px;">Contains product data - Print & Scan</p>
+                    
+                    <div class="barcode-preview">
+                        <svg id="printBarcode" width="280" height="70" style="margin: 0 auto;"></svg>
+                        <div style="font-family: monospace; font-size: 12px; margin-top: 10px; background: #f0f0f0; display: inline-block; padding: 5px 15px; border-radius: 20px; color: #333;" id="barcodeValueDisplay">LBN-250-LR-YIRG001</div>
+                    </div>
+                    
+                    <div class="product-details-card">
+                        <h4 style="color: #D4AF37; margin-bottom: 10px;">📦 Product Details</h4>
+                        <div class="product-row"><span>Product:</span><span id="infoName" style="color: #D4AF37;">Yirgacheffe G1</span></div>
+                        <div class="product-row"><span>Roast:</span><span id="infoRoast">Light Roast</span></div>
+                        <div class="product-row"><span>Weight:</span><span id="infoWeight">250g</span></div>
+                        <div class="product-row"><span>Origin:</span><span id="infoOrigin">Ethiopia · Yirgacheffe</span></div>
+                        <div class="product-row"><span>Price:</span><span id="infoPrice" style="font-size: 20px; color: #D4AF37;">$28.99</span></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>📦 Select Product</label>
+                        <select id="productSelect" style="font-family: monospace;">
+                            <option value="LBN-250-LR-YIRG001|Yirgacheffe G1|Light Roast|250g|Ethiopia · Yirgacheffe|28.99">🌱 Yirgacheffe G1 · Light Roast — $28.99</option>
+                            <option value="LBN-250-MR-SID002|Sidama Natural|Medium Roast|250g|Ethiopia · Sidama|26.50">🍒 Sidama Natural · Medium Roast — $26.50</option>
+                            <option value="LBN-250-MD-GUJI003|Guji Hambela|Medium-Dark|250g|Ethiopia · Guji|31.99">⛰️ Guji Hambela · Medium-Dark — $31.99</option>
+                            <option value="LBN-250-DR-LEGACY04|Legacy Reserve|Dark Roast|250g|Ethiopia · Blend|34.99">🔥 Legacy Reserve · Dark Roast — $34.99</option>
+                            <option value="LBN-250-LR-LIMU005|Limu Special|Light Roast|250g|Ethiopia · Limu|29.99">🍯 Limu Special · Light Roast — $29.99</option>
+                            <option value="LBN-250-MR-HARAR006|Harar Longberry|Medium Roast|250g|Ethiopia · Harar|32.99">🫐 Harar Longberry · Medium Roast — $32.99</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="refreshSmartBarcode()" class="btn-secondary">⟳ Refresh</button>
+                        <button onclick="printSmartBarcode()" style="background: #D4AF37; color: #1a1a2e;">🖨️ Print</button>
+                        <button onclick="downloadSmartBarcode()" class="btn-secondary">📥 Download PNG</button>
+                    </div>
+                </div>
+                
+                <!-- RIGHT: POS Simulator -->
+                <div style="background: #1a1a2e; border-radius: 20px; overflow: hidden;">
+                    <div style="background: linear-gradient(135deg, #2c2c3a, #1a1a2a); padding: 15px 20px; border-bottom: 2px solid #D4AF37;">
+                        <h3 style="color: #D4AF37;">🛒 POS TERMINAL</h3>
+                        <p style="font-size: 11px; color: #888;">Scan barcode → Auto-add to cart</p>
+                    </div>
+                    
+                    <div id="smartCartArea" style="background: #252535; padding: 15px; min-height: 320px; max-height: 350px; overflow-y: auto;">
+                        <div style="text-align: center; color: #666; padding: 40px;">No items scanned yet<br>Scan a barcode to add product</div>
+                    </div>
+                    
+                    <div class="pos-total">
+                        <span style="font-size: 18px; font-weight: bold; color: #ccc;">TOTAL</span>
+                        <span id="smartCartTotal" style="font-size: 28px; font-weight: bold; color: #D4AF37;">$0.00</span>
+                    </div>
+                    
+                    <div style="padding: 15px 20px; display: flex; gap: 10px;">
+                        <button onclick="smartCheckout('cash')" class="btn-cash" style="flex: 1; background: #28a745;">💰 Cash</button>
+                        <button onclick="smartCheckout('card')" class="btn-card" style="flex: 1; background: #17a2b8;">💳 Card</button>
+                        <button onclick="smartCheckout('mobile')" class="btn-mobile" style="flex: 1; background: #ffc107; color: #1a1a2e;">📱 Mobile</button>
+                    </div>
+                    <div style="display: flex; gap: 10px; padding: 0 20px 15px 20px;">
+                        <button onclick="clearSmartCart()" class="btn-secondary" style="flex: 1;">🗑️ Clear Cart</button>
+                    </div>
+                    
+                    <div class="pos-feedback" id="smartPosFeedback">
+                        🔍 Ready to scan — Scanner will add items automatically
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pages Panel -->
+        <div id="pages-panel" class="panel">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>Dynamic Landing Pages</h3>
+                <div class="form-group"><label>Select QR Code</label><select id="page-qr-select" onchange="loadPageData()"><option value="">-- Select --</option></select></div>
+                <div id="page-editor" style="display: none;">
+                    <div class="form-group"><label>Page Type</label><select id="page-type" onchange="togglePageFields()"><option value="redirect">🔗 URL</option><option value="product">🛍️ Product</option></select></div>
+                    <div id="redirect-fields"><div class="form-group"><label>Destination URL</label><input type="url" id="page-destination"></div></div>
+                    <div id="product-fields" style="display: none;">
+                        <div class="form-group"><label>Product Name</label><input type="text" id="product-name"></div>
+                        <div class="form-group"><label>Price</label><input type="number" id="product-price" step="0.01"></div>
+                        <div class="form-group"><label>Description</label><textarea id="product-desc" rows="3"></textarea></div>
+                    </div>
+                    <button onclick="savePageSettings()">💾 Save</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Products Panel -->
+        <div id="products-panel" class="panel">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>Coffee Products</h3>
+                <button class="btn-secondary" onclick="loadProducts()">🔄 Refresh</button>
+                <div id="products-list" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+        
+        <!-- POS Panel (Original) -->
+        <div id="pos-panel" class="panel">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                    <h3>Scan Barcode</h3>
+                    <input type="text" id="pos-barcode" placeholder="LBN-250-MR-XXXXXXX">
+                    <button onclick="addToCart()" style="margin-top: 10px;">➕ Add to Cart</button>
+                    <div id="cart-items" style="margin-top: 20px;"></div>
+                    <div id="cart-total" style="font-size: 24px; font-weight: bold; margin-top: 20px;">Total: $0.00</div>
+                    <button class="btn-secondary" onclick="clearCart()">Clear Cart</button>
+                    <button onclick="checkout()">✅ Checkout</button>
+                </div>
+                <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;"><h3>Today's Sales</h3><div id="sales-info"></div></div>
+            </div>
+        </div>
+        
+        <!-- Analytics Panel -->
+        <div id="analytics-panel" class="panel">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px;">
+                <h3>Scan Analytics</h3>
+                <div id="analytics-stats"></div>
+                <div id="recent-scans" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ============================================
+        // SMART POS & BARCODE MODULE
+        // ============================================
+        
+        // Product database
+        const smartProducts = {
+            "LBN-250-LR-YIRG001": { name: "Yirgacheffe G1", roast: "Light Roast", weight: "250g", origin: "Ethiopia · Yirgacheffe", price: 28.99 },
+            "LBN-250-MR-SID002": { name: "Sidama Natural", roast: "Medium Roast", weight: "250g", origin: "Ethiopia · Sidama", price: 26.50 },
+            "LBN-250-MD-GUJI003": { name: "Guji Hambela", roast: "Medium-Dark", weight: "250g", origin: "Ethiopia · Guji", price: 31.99 },
+            "LBN-250-DR-LEGACY04": { name: "Legacy Reserve", roast: "Dark Roast", weight: "250g", origin: "Ethiopia · Blend", price: 34.99 },
+            "LBN-250-LR-LIMU005": { name: "Limu Special", roast: "Light Roast", weight: "250g", origin: "Ethiopia · Limu", price: 29.99 },
+            "LBN-250-MR-HARAR006": { name: "Harar Longberry", roast: "Medium Roast", weight: "250g", origin: "Ethiopia · Harar", price: 32.99 }
+        };
+        
+        let smartCart = [];
+        let currentSmartBarcode = "LBN-250-LR-YIRG001";
+        
+        // Generate barcode using JsBarcode
+        function generateSmartBarcode() {
+            if (typeof JsBarcode !== 'undefined') {
+                JsBarcode("#printBarcode", currentSmartBarcode, {
+                    format: "CODE128",
+                    width: 2,
+                    height: 60,
+                    displayValue: false,
+                    margin: 10,
+                    background: "#ffffff",
+                    lineColor: "#1a3a32"
+                });
+            }
+        }
+        
+        // Update product info from selector
+        function updateSmartProduct() {
+            const select = document.getElementById('productSelect');
+            const parts = select.value.split('|');
+            currentSmartBarcode = parts[0];
+            generateSmartBarcode();
+            document.getElementById('barcodeValueDisplay').innerText = currentSmartBarcode;
+            document.getElementById('infoName').innerText = parts[1];
+            document.getElementById('infoRoast').innerText = parts[2];
+            document.getElementById('infoWeight').innerText = parts[3];
+            document.getElementById('infoOrigin').innerText = parts[4];
+            document.getElementById('infoPrice').innerHTML = `$${parseFloat(parts[5]).toFixed(2)}`;
+        }
+        
+        // Refresh barcode
+        function refreshSmartBarcode() {
+            generateSmartBarcode();
+            showSmartFeedback("Barcode refreshed!", "info");
+        }
+        
+        // Print barcode
+        function printSmartBarcode() {
+            window.print();
+        }
+        
+        // Download barcode as PNG
+        function downloadSmartBarcode() {
+            const svg = document.querySelector("#printBarcode");
+            if (svg) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const data = new XMLSerializer().serializeToString(svg);
+                const img = new Image();
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const link = document.createElement('a');
+                    link.download = currentSmartBarcode + '.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                    showSmartFeedback("Barcode downloaded!", "success");
+                };
+                img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(data);
+            }
+        }
+        
+        // Update POS Cart Display
+        function updateSmartCartDisplay() {
+            const cartArea = document.getElementById('smartCartArea');
+            const totalSpan = document.getElementById('smartCartTotal');
+            
+            if (smartCart.length === 0) {
+                cartArea.innerHTML = '<div style="text-align: center; color: #666; padding: 40px;">No items scanned yet<br>Scan a barcode to add product</div>';
+                totalSpan.innerText = "$0.00";
+                return;
+            }
+            
+            let html = '';
+            let total = 0;
+            smartCart.forEach((item, idx) => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                html += `
+                    <div class="pos-cart-item">
+                        <div style="flex:2">
+                            <div style="font-weight: bold;">${item.name}</div>
+                            <div style="font-size: 10px; color: #888;">${item.barcode}</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button onclick="changeSmartQuantity(${idx}, -1)" style="background: #3a3a4a; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer; color: white;">-</button>
+                            <span style="min-width: 25px; text-align: center;">${item.quantity}</span>
+                            <button onclick="changeSmartQuantity(${idx}, 1)" style="background: #3a3a4a; border: none; width: 25px; height: 25px; border-radius: 50%; cursor: pointer; color: white;">+</button>
+                        </div>
+                        <div style="min-width: 70px; text-align: right; color: #D4AF37;">$${itemTotal.toFixed(2)}</div>
+                        <button onclick="removeSmartItem(${idx})" style="background: #5a2a2a; border: none; padding: 5px 12px; border-radius: 15px; margin-left: 10px; cursor: pointer;">✗</button>
+                    </div>
+                `;
+            });
+            cartArea.innerHTML = html;
+            totalSpan.innerText = `$${total.toFixed(2)}`;
+        }
+        
+        function changeSmartQuantity(index, delta) {
+            if (smartCart[index]) {
+                const newQty = smartCart[index].quantity + delta;
+                if (newQty <= 0) {
+                    smartCart.splice(index, 1);
+                } else {
+                    smartCart[index].quantity = newQty;
+                }
+                updateSmartCartDisplay();
+            }
+        }
+        
+        function removeSmartItem(index) {
+            smartCart.splice(index, 1);
+            updateSmartCartDisplay();
+            showSmartFeedback("Item removed from cart", "info");
+        }
+        
+        function clearSmartCart() {
+            if (smartCart.length === 0) {
+                showSmartFeedback("Cart is already empty", "warning");
+                return;
+            }
+            smartCart = [];
+            updateSmartCartDisplay();
+            showSmartFeedback("Cart cleared", "info");
+        }
+        
+        function smartCheckout(paymentMethod) {
+            if (smartCart.length === 0) {
+                showSmartFeedback("Cart is empty! Scan some items first.", "error");
+                return;
+            }
+            const total = smartCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const itemCount = smartCart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            alert(`🧾 LUBAN COFFEE RECEIPT\n\nItems: ${itemCount}\nTotal: $${total.toFixed(2)}\nPayment: ${paymentMethod.toUpperCase()}\n\nThank you! ☕`);
+            
+            showSmartFeedback(`🎉 CHECKOUT! ${itemCount} items · $${total.toFixed(2)}`, "success");
+            smartCart = [];
+            updateSmartCartDisplay();
+        }
+        
+        function addToSmartCart(barcode) {
+            const product = smartProducts[barcode];
+            if (!product) {
+                showSmartFeedback(`❌ Unknown barcode: ${barcode}`, "error");
+                return false;
+            }
+            
+            const existing = smartCart.find(item => item.barcode === barcode);
+            if (existing) {
+                existing.quantity++;
+                showSmartFeedback(`✅ Added another ${product.name}`, "success");
+            } else {
+                smartCart.push({
+                    barcode: barcode,
+                    name: product.name,
+                    price: product.price,
+                    quantity: 1
+                });
+                showSmartFeedback(`✅ Added: ${product.name} - $${product.price}`, "success");
+            }
+            updateSmartCartDisplay();
+            return true;
+        }
+        
+        function showSmartFeedback(message, type) {
+            const feedbackDiv = document.getElementById('smartPosFeedback');
+            feedbackDiv.innerHTML = `🔍 ${message}`;
+            if (type === "error") feedbackDiv.style.color = "#ff8888";
+            else if (type === "success") feedbackDiv.style.color = "#8bc34a";
+            else feedbackDiv.style.color = "#D4AF37";
+            
+            setTimeout(() => {
+                feedbackDiv.style.color = "#8bc34a";
+                feedbackDiv.innerHTML = "🔍 Ready to scan — Scanner will add items automatically";
+            }, 2500);
+        }
+        
+        // Scanner listener (real USB scanner)
+        function initSmartScanner() {
+            let scanBuffer = "";
+            let scanTimeout = null;
+            
+            document.addEventListener("keydown", function(event) {
+                if (event.target.tagName === "SELECT" || event.target.tagName === "BUTTON" || event.target.tagName === "INPUT") {
+                    return;
+                }
+                
+                if (event.key === "Enter") {
+                    if (scanBuffer.length > 3) {
+                        addToSmartCart(scanBuffer);
+                        scanBuffer = "";
+                        if (scanTimeout) clearTimeout(scanTimeout);
+                    }
+                    return;
+                }
+                
+                if (event.key.length === 1 || event.key === " " || /^[A-Za-z0-9\-]$/.test(event.key)) {
+                    scanBuffer += event.key;
+                    if (scanTimeout) clearTimeout(scanTimeout);
+                    scanTimeout = setTimeout(() => { scanBuffer = ""; }, 100);
+                }
+            });
+            
+            console.log("🔍 Scanner ready for Smart POS!");
+        }
+        
+        // Initialize Smart POS panel
+        function initSmartPos() {
+            updateSmartProduct();
+            initSmartScanner();
+        }
+        
+        // ============================================
+        // ORIGINAL DASHBOARD FUNCTIONS
+        // ============================================
+        
+        var API_BASE = '';
+        var cart = [];
+        var scanChart = null;
+        var currentEditingQRId = null;
+        
+        function showAlert(message, type) {
+            var container = document.getElementById('alert-container');
+            container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+            setTimeout(function() { container.innerHTML = ''; }, 3000);
+        }
+        
+        function apiCall(endpoint, method, bodyData) {
+            return fetch(endpoint, {
+                method: method || 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                body: bodyData ? JSON.stringify(bodyData) : null
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (!data.success) throw new Error(data.error || 'API Error');
+                return data;
+            })
+            .catch(function(error) {
+                showAlert(error.message, 'error');
+                throw error;
+            });
+        }
+        
+        // Navigation
+        function showPanel(panelName) {
+            var panels = document.querySelectorAll('.panel');
+            for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+            var navItems = document.querySelectorAll('.nav-item');
+            for (var i = 0; i < navItems.length; i++) navItems[i].classList.remove('active');
+            document.getElementById(panelName + '-panel').classList.add('active');
+            var activeNav = document.querySelector('.nav-item[data-panel="' + panelName + '"]');
+            if (activeNav) activeNav.classList.add('active');
+            
+            var titles = { dashboard: 'Dashboard', qr: 'QR Codes', barcode: 'Barcodes', smartpos: 'Smart POS', pages: 'Landing Pages', products: 'Products', pos: 'POS Terminal', analytics: 'Analytics' };
+            document.getElementById('page-title').innerText = titles[panelName] || panelName;
+            
+            if (panelName === 'dashboard') loadDashboard();
+            if (panelName === 'qr') loadQRCodes();
+            if (panelName === 'products') loadProducts();
+            if (panelName === 'pages') loadPageSelect();
+            if (panelName === 'analytics') loadAnalytics();
+            if (panelName === 'smartpos') initSmartPos();
+        }
+        
+        // Attach navigation
+        var navItems = document.querySelectorAll('.nav-item');
+        for (var i = 0; i < navItems.length; i++) {
+            navItems[i].addEventListener('click', function(e) {
+                var panel = this.getAttribute('data-panel');
+                if (panel) showPanel(panel);
+            });
+        }
+        
+        // Dashboard
+        function loadDashboard() {
+            apiCall('/api/qr/list', 'GET')
+            .then(function(data) {
+                var codes = data.codes || [];
+                var totalScans = 0;
+                for (var i = 0; i < codes.length; i++) totalScans += (codes[i].scan_count || 0);
+                document.getElementById('total-qr').innerText = codes.length;
+                document.getElementById('total-scans').innerText = totalScans;
+                document.getElementById('active-products').innerText = codes.filter(function(c) { return c.page_type === 'product'; }).length;
+                document.getElementById('inventory-stock').innerText = '1250';
+                
+                var recentHtml = '';
+                for (var i = 0; i < Math.min(5, codes.length); i++) {
+                    var c = codes[i];
+                    var dest = c.destination_url || c.product_name || 'Not set';
+                    recentHtml += '<div class="code-item"><strong>' + c.id + '</strong><br>🎯 ' + dest + '<br>📊 ' + (c.scan_count || 0) + ' scans</div>';
+                }
+                document.getElementById('recent-codes').innerHTML = recentHtml || '<p>No QR codes yet</p>';
+                
+                var ctx = document.getElementById('scanChart').getContext('2d');
+                if (scanChart) scanChart.destroy();
+                var labels = [], chartData = [];
+                for (var i = 0; i < Math.min(8, codes.length); i++) {
+                    labels.push(codes[i].id);
+                    chartData.push(codes[i].scan_count || 0);
+                }
+                scanChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: labels, datasets: [{ label: 'Scans', data: chartData, backgroundColor: '#D4AF37', borderRadius: 8 }] },
+                    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: 'white' } } } }
+                });
+            })
+            .catch(function(error) { console.error('Dashboard error:', error); });
+        }
+        
+        // QR Functions
+        function generateQR() {
+            var id = document.getElementById('qr-id').value.trim();
+            var destinationUrl = document.getElementById('qr-dest').value;
+            var darkColor = document.getElementById('qr-dark').value;
+            var lightColor = document.getElementById('qr-light').value;
+            if (!id) { showAlert('Enter QR Code ID', 'error'); return; }
+            
+            apiCall('/api/qr/create', 'POST', { id: id })
+            .then(function() {
+                if (destinationUrl) {
+                    return apiCall('/api/qr/update/' + id, 'PUT', { destinationUrl: destinationUrl });
+                }
+                return Promise.resolve();
+            })
+            .then(function() {
+                var content = window.location.origin + '/api/r/' + id;
+                return apiCall('/api/qr/generate', 'POST', { content: content, darkColor: darkColor, lightColor: lightColor, format: 'png' });
+            })
+            .then(function(qrData) {
+                document.getElementById('qr-result').innerHTML = '<img src="' + qrData.image + '" style="max-width:150px; border-radius:12px; background:white; padding:10px;"><br><strong>' + id + '</strong><br><small>' + content + '</small><br><button class="btn-secondary" onclick="downloadQR(\'' + qrData.image + '\', \'' + id + '\')" style="margin-top:10px;">📥 Download</button>';
+                showAlert('QR Code ' + id + ' generated!', 'success');
+                loadQRCodes();
+                loadPageSelect();
+                loadDashboard();
+            })
+            .catch(function(error) { console.error('QR error:', error); });
+        }
+        
+        function downloadQR(img, name) {
+            var a = document.createElement('a');
+            a.href = img;
+            a.download = name + '.png';
+            a.click();
+        }
+        
+        function loadQRCodes() {
+            apiCall('/api/qr/list', 'GET')
+            .then(function(data) {
+                var codes = data.codes || [];
+                var html = '';
+                for (var i = 0; i < codes.length; i++) {
+                    var code = codes[i];
+                    var destDisplay = (code.page_type === 'product') ? '🛍️ ' + (code.product_name || 'Product') : (code.destination_url || 'Not set');
+                    html += '<div class="code-item"><strong>📱 ' + code.id + '</strong>';
+                    html += '<div style="color:#D4AF37;">🎯 ' + destDisplay + '</div>';
+                    html += '<div>📊 Scans: ' + (code.scan_count || 0) + '</div>';
+                    html += '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">';
+                    html += '<input type="text" id="edit-' + code.id + '" placeholder="New URL" style="flex:2; padding:6px;">';
+                    html += '<button onclick="setCurrentEditingQR(\'' + code.id + '\')" style="background:#D4AF37; color:#000; padding:6px 12px;">📄 Select</button>';
+                    html += '<button onclick="updateQR(\'' + code.id + '\')" style="background:#667eea; padding:6px 12px;">Update</button>';
+                    html += '<button onclick="deleteQR(\'' + code.id + '\')" style="background:#dc3545; padding:6px 12px;">Delete</button>';
+                    html += '</div><div style="font-size:11px;">💡 Click "Select" then choose a landing page above</div></div>';
+                }
+                document.getElementById('qr-list').innerHTML = html || '<p>No QR codes yet. Generate one!</p>';
+            })
+            .catch(function(error) { console.error('Load QR error:', error); });
+        }
+        
+        function setCurrentEditingQR(id) {
+            currentEditingQRId = id;
+            showAlert('✏️ Now editing: ' + id + '. Click any landing page above.', 'success');
+        }
+        
+        function updateQR(id) {
+            var newUrl = document.getElementById('edit-' + id).value;
+            if (!newUrl) { showAlert('Enter a URL', 'error'); return; }
+            apiCall('/api/qr/update/' + id, 'PUT', { destinationUrl: newUrl })
+            .then(function() {
+                showAlert('Updated ' + id, 'success');
+                loadQRCodes();
+                loadPageSelect();
+            })
+            .catch(function(error) { console.error('Update error:', error); });
+        }
+        
+        function deleteQR(id) {
+            if (!confirm('Delete ' + id + ' permanently?')) return;
+            apiCall('/api/qr/delete/' + id, 'DELETE')
+            .then(function() {
+                showAlert('Deleted ' + id, 'success');
+                loadQRCodes();
+                loadDashboard();
+                loadPageSelect();
+            })
+            .catch(function(error) { console.error('Delete error:', error); });
+        }
+        
+        // Landing Pages
+        var landingPages = [
+            { name: '🏠 Home Page', url: '/' }, { name: '🛒 Shop All', url: '/shop.html' },
+            { name: '📖 Our Story', url: '/about.html' }, { name: '🌿 Yirgacheffe', url: '/product/yirgacheffe.html' },
+            { name: '🌱 Sidama', url: '/product/sidama.html' }, { name: '⛰️ Guji', url: '/product/guji.html' },
+            { name: '☕ Brewing Guide', url: '/brew-guide.html' }, { name: '⭐ Loyalty Rewards', url: '/loyalty.html' },
+            { name: '📷 Instagram', url: 'https://instagram.com/lubancoffee' }, { name: '👍 Facebook', url: 'https://facebook.com/lubancoffee' }
+        ];
+        
+        function loadLandingPages() {
+            var container = document.getElementById('landing-pages-list');
+            if (!container) return;
+            var html = '';
+            for (var i = 0; i < landingPages.length; i++) {
+                html += '<div onclick="applyLandingPage(\'' + landingPages[i].url + '\')" style="background:rgba(255,255,255,0.1); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-block; margin:3px;">' + landingPages[i].name + '</div>';
+            }
+            container.innerHTML = html;
+        }
+        
+        function applyLandingPage(url) {
+            if (currentEditingQRId) {
+                var input = document.getElementById('edit-' + currentEditingQRId);
+                if (input) { input.value = url; showAlert('✅ Applied to ' + currentEditingQRId, 'success'); }
+            } else {
+                var destField = document.getElementById('qr-dest');
+                if (destField) { destField.value = url; showAlert('✅ URL applied to generation field', 'success'); }
+            }
+        }
+        
+        // Batch QR
+        function showBatchQRGenerator() { document.getElementById('batchQRModal').style.display = 'block'; }
+        function closeBatchModal() { document.getElementById('batchQRModal').style.display = 'none'; }
+        
+        function generateBatchQRs() {
+            var prefix = document.getElementById('batch-prefix').value;
+            var start = parseInt(document.getElementById('batch-start').value);
+            var end = parseInt(document.getElementById('batch-end').value);
+            var baseDest = document.getElementById('batch-dest').value;
+            if (!prefix || !start || !end || !baseDest) { showAlert('Fill all fields', 'error'); return; }
+            
+            var promises = [];
+            for (var i = start; i <= end; i++) {
+                var id = prefix + String(i).padStart(3, '0');
+                var destinationUrl = baseDest + id;
+                promises.push(apiCall('/api/qr/create', 'POST', { id: id }).then(function() {
+                    return apiCall('/api/qr/update/' + id, 'PUT', { destinationUrl: destinationUrl });
+                }));
+            }
+            Promise.all(promises).then(function() {
+                showAlert('Generated ' + (end - start + 1) + ' QR codes!', 'success');
+                loadQRCodes();
+                loadPageSelect();
+                closeBatchModal();
+            }).catch(function(e) { console.error('Batch error:', e); });
+        }
+        
+        // Barcode Functions
+        var isGenerating = false;
+        
+        function generatePremiumBarcodes() {
+            if (isGenerating) { showAlert('Already generating...', 'warning'); return; }
+            
+            var weight = document.getElementById('barcode-weight').value;
+            var roast = document.getElementById('barcode-roast').value;
+            var qty = parseInt(document.getElementById('barcode-qty').value);
+            var barColor = document.getElementById('barcode-color').value;
+            
+            if (!qty || qty < 1) { showAlert('Enter valid quantity', 'error'); return; }
+            if (qty > 20 && !confirm('Generate ' + qty + ' barcodes? May take a moment.')) return;
+            
+            isGenerating = true;
+            var resultDiv = document.getElementById('barcode-result');
+            resultDiv.innerHTML = '<div style="text-align:center; padding:40px;">⏳ Generating ' + qty + ' barcodes...</div>';
+            
+            var html = '<h4>📊 Generated Barcodes:</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:15px;">';
+            
+            function generateNext(index) {
+                if (index >= qty) {
+                    html += '</div><div style="margin-top:20px; text-align:center;">';
+                    html += '<button onclick="loadSavedBarcodes()" class="btn-secondary">📋 View Saved Barcodes</button>';
+                    html += '<button onclick="downloadAllBarcodes()" class="btn-secondary" style="margin-left:10px;">📥 Download All</button>';
+                    html += '</div>';
+                    resultDiv.innerHTML = html;
+                    showAlert('Generated ' + qty + ' barcodes!', 'success');
+                    isGenerating = false;
+                    return;
+                }
+                
+                var serial = Math.random().toString(36).substring(2, 9).toUpperCase();
+                var barcodeValue = 'LBN-' + weight + '-' + roast + '-' + serial;
+                
+                if (index % 5 === 0) {
+                    resultDiv.innerHTML = '<div style="text-align:center; padding:40px;">⏳ Barcode ' + (index + 1) + ' of ' + qty + '...</div>';
+                }
+                
+                fetch('/api/barcode/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: barcodeValue, barColor: barColor })
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    fetch('/api/barcode/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ barcode: barcodeValue, weight: weight, roast: roast })
+                    }).catch(function(e) { console.log('Save error:', e); });
+                    
+                    html += '<div class="code-item" style="text-align:center;">';
+                    if (data && data.image) {
+                        html += '<img src="' + data.image + '" style="max-width:200px; background:white; padding:10px; border-radius:8px;">';
+                        html += '<div><button onclick="downloadSingleBarcode(\'' + data.image + '\', \'' + barcodeValue + '\')" class="btn-sm" style="margin-top:8px;">📥 Download PNG</button></div>';
+                    } else {
+                        html += '<div style="font-family:monospace; font-size:16px; padding:20px; background:white; color:black; border-radius:8px;">' + barcodeValue + '</div>';
+                    }
+                    html += '<div style="font-family:monospace; margin-top:8px;"><strong>' + barcodeValue + '</strong></div>';
+                    html += '<div style="margin-top:8px;">';
+                    html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy</button>';
+                    html += '<button onclick="testScanBarcode(\'' + barcodeValue + '\')" class="btn-sm" style="margin-left:5px;">🔍 Test Scan</button>';
+                    html += '</div>';
+                    html += '</div>';
+                    
+                    setTimeout(function() { generateNext(index + 1); }, 100);
+                })
+                .catch(function(error) {
+                    console.error('Error:', error);
+                    html += '<div class="code-item" style="text-align:center;">';
+                    html += '<div style="font-family:monospace; padding:20px;">' + barcodeValue + '</div>';
+                    html += '<div style="color:#dc3545;">❌ Failed</div>';
+                    html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy</button>';
+                    html += '</div>';
+                    setTimeout(function() { generateNext(index + 1); }, 100);
+                });
+            }
+            
+            generateNext(0);
+        }
+        
+        function downloadSingleBarcode(imageData, barcodeName) {
+            var a = document.createElement('a');
+            a.href = imageData;
+            a.download = barcodeName + '.png';
+            a.click();
+            showAlert('Downloaded: ' + barcodeName, 'success');
+        }
+        
+        function downloadAllBarcodes() {
+            var images = document.querySelectorAll('#barcode-result img');
+            if (images.length === 0) {
+                showAlert('No barcodes to download', 'error');
+                return;
+            }
+            for (var i = 0; i < images.length; i++) {
+                var img = images[i];
+                var barcodeText = img.parentElement.parentElement.querySelector('strong')?.innerText || 'barcode_' + i;
+                var a = document.createElement('a');
+                a.href = img.src;
+                a.download = barcodeText + '.png';
+                a.click();
+            }
+            showAlert('Downloaded ' + images.length + ' barcodes', 'success');
+        }
+        
+        function testScanBarcode(barcodeValue) {
+            showAlert('🔍 Testing barcode: ' + barcodeValue, 'success');
+            fetch('/api/barcode/verify/' + barcodeValue)
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                var message = '';
+                if (data.valid && data.isAuthentic) {
+                    message = '✅ AUTHENTIC PRODUCT!\n';
+                    message += 'Product: ' + (data.productName || 'Luban Coffee') + '\n';
+                    message += 'Status: ' + (data.status || 'Active') + '\n';
+                    if (data.loyaltyPoints) message += '⭐ +' + data.loyaltyPoints + ' loyalty points!';
+                } else {
+                    message = '❌ ' + (data.message || 'Invalid barcode');
+                }
+                alert(message);
+            })
+            .catch(function(error) {
+                alert('❌ Verification service error. Please try again.');
+                console.error(error);
+            });
+        }
+        
+        function loadSavedBarcodes() {
+            showAlert('Loading saved barcodes...', 'success');
+            fetch('/api/barcode/list')
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                var barcodes = data.barcodes || [];
+                if (barcodes.length === 0) {
+                    document.getElementById('barcode-result').innerHTML = '<p style="text-align:center; padding:40px;">No saved barcodes found. Generate some first!</p>';
+                    return;
+                }
+                var html = '<h4>📋 Saved Barcodes (' + barcodes.length + '):</h4><div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:15px;">';
+                for (var i = 0; i < barcodes.length; i++) {
+                    var b = barcodes[i];
+                    var barcodeValue = b.barcode_value || b.id || 'N/A';
+                    var createdDate = b.created_at ? new Date(b.created_at).toLocaleDateString() : 'Unknown';
+                    html += '<div class="code-item"><div style="font-family:monospace; font-size:14px;"><strong>' + barcodeValue + '</strong></div>';
+                    html += '<div style="font-size:12px;">Created: ' + createdDate + '</div>';
+                    html += '<div style="font-size:12px;">Weight: ' + (b.weight_grams || 250) + 'g | Roast: ' + (b.roast_level || 'MR') + '</div>';
+                    html += '<div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">';
+                    html += '<button onclick="copyToClipboard(\'' + barcodeValue + '\')" class="btn-sm">📋 Copy Barcode</button>';
+                    html += '<button onclick="testScanBarcode(\'' + barcodeValue + '\')" class="btn-sm">🔍 Test Scan</button>';
+                    html += '</div></div>';
+                }
+                html += '</div>';
+                document.getElementById('barcode-result').innerHTML = html;
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                showAlert('Error loading saved barcodes', 'error');
+            });
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            showAlert('Copied: ' + text, 'success');
+        }
+        
+        // Page Settings
+        function loadPageSelect() {
+            apiCall('/api/qr/list', 'GET')
+            .then(function(data) {
+                var codes = data.codes || [];
+                var html = '<option value="">-- Select QR Code --</option>';
+                for (var i = 0; i < codes.length; i++) html += '<option value="' + codes[i].id + '">' + codes[i].id + '</option>';
+                document.getElementById('page-qr-select').innerHTML = html;
+            })
+            .catch(function(error) { console.error('Error:', error); });
+        }
+        
+        function loadPageData() {
+            var qrId = document.getElementById('page-qr-select').value;
+            if (!qrId) { document.getElementById('page-editor').style.display = 'none'; return; }
+            apiCall('/api/qr/product/' + qrId, 'GET')
+            .then(function(data) {
+                var product = data.product || {};
+                document.getElementById('page-type').value = (product.page_type === 'product') ? 'product' : 'redirect';
+                document.getElementById('page-destination').value = product.destination_url || '';
+                document.getElementById('product-name').value = product.product_name || '';
+                document.getElementById('product-price').value = product.product_price || '';
+                document.getElementById('product-desc').value = product.product_description || '';
+                togglePageFields();
+                document.getElementById('page-editor').style.display = 'block';
+            })
+            .catch(function(error) { console.error('Error:', error); });
+        }
+        
+        function togglePageFields() {
+            var type = document.getElementById('page-type').value;
+            document.getElementById('redirect-fields').style.display = (type === 'redirect') ? 'block' : 'none';
+            document.getElementById('product-fields').style.display = (type === 'product') ? 'block' : 'none';
+        }
+        
+        function savePageSettings() {
+            var qrId = document.getElementById('page-qr-select').value;
+            var type = document.getElementById('page-type').value;
+            if (!qrId) { showAlert('Select a QR code', 'error'); return; }
+            if (type === 'redirect') {
+                var destination = document.getElementById('page-destination').value;
+                if (!destination) { showAlert('Enter URL', 'error'); return; }
+                apiCall('/api/qr/update/' + qrId, 'PUT', { destinationUrl: destination })
+                .then(function() { showAlert('QR code updated', 'success'); loadPageSelect(); loadQRCodes(); })
+                .catch(function(e) { console.error(e); });
+            } else {
+                var productName = document.getElementById('product-name').value;
+                var productPrice = parseFloat(document.getElementById('product-price').value);
+                var productDesc = document.getElementById('product-desc').value;
+                if (!productName) { showAlert('Enter product name', 'error'); return; }
+                apiCall('/api/qr/update-product/' + qrId, 'PUT', { productName: productName, productPrice: productPrice, productDescription: productDesc })
+                .then(function() { showAlert('Product page saved', 'success'); loadPageSelect(); loadQRCodes(); })
+                .catch(function(e) { console.error(e); });
+            }
+        }
+        
+        // Products
+        function loadProducts() {
+            apiCall('/api/products', 'GET')
+            .then(function(data) {
+                var products = data.products || [];
+                var html = '<table class="data-table">一期<th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Origin</th><th>Roast</th></tr>';
+                for (var i = 0; i < products.length; i++) {
+                    var p = products[i];
+                    html += '<tr><td>' + p.id + '</td><td>' + p.name + '</td><td>$' + p.price + '</td><td>' + (p.stock || 0) + '</td><td>' + (p.origin || 'Ethiopia') + '</td><td>' + (p.roast || 'Medium') + '</td></tr>';
+                }
+                html += '</table>';
+                document.getElementById('products-list').innerHTML = html;
+            })
+            .catch(function(error) { document.getElementById('products-list').innerHTML = '<p>Error loading products</p>'; });
+        }
+        
+        // POS (Original)
+        function addToCart() {
+            var barcode = document.getElementById('pos-barcode').value.trim();
+            if (!barcode) { showAlert('Scan barcode', 'error'); return; }
+            cart.push({ barcode: barcode, price: 24.99 });
+            updateCartDisplay();
+            document.getElementById('pos-barcode').value = '';
+            showAlert('Added ' + barcode, 'success');
+        }
+        
+        function updateCartDisplay() {
+            var html = '', total = 0;
+            for (var i = 0; i < cart.length; i++) {
+                total += cart[i].price;
+                html += '<div style="display:flex; justify-content:space-between; padding:10px;"><span>' + cart[i].barcode + '</span><span>$' + cart[i].price + '</span><button onclick="removeFromCart(' + i + ')" class="btn-danger btn-sm">Remove</button></div>';
+            }
+            document.getElementById('cart-items').innerHTML = html || '<p style="text-align:center;">Empty cart</p>';
+            document.getElementById('cart-total').innerHTML = 'Total: $' + total.toFixed(2);
+            document.getElementById('sales-info').innerHTML = '<div class="stat-card"><div class="stat-value">' + cart.length + '</div><div>Items</div></div><div class="stat-card"><div class="stat-value">$' + total.toFixed(2) + '</div><div>Cart Value</div></div>';
+        }
+        
+        function removeFromCart(i) { cart.splice(i, 1); updateCartDisplay(); }
+        function clearCart() { cart = []; updateCartDisplay(); showAlert('Cart cleared', 'success'); }
+        function checkout() {
+            if (cart.length === 0) { showAlert('Cart empty', 'error'); return; }
+            var total = 0;
+            for (var i = 0; i < cart.length; i++) total += cart[i].price;
+            showAlert('Checkout complete! Total: $' + total.toFixed(2), 'success');
+            clearCart();
+        }
+        
+        // Analytics
+        function loadAnalytics() {
+            apiCall('/api/qr/list', 'GET')
+            .then(function(data) {
+                var codes = data.codes || [];
+                var totalScans = 0;
+                for (var i = 0; i < codes.length; i++) totalScans += (codes[i].scan_count || 0);
+                document.getElementById('analytics-stats').innerHTML = '<div class="stats-grid"><div class="stat-card"><div class="stat-value">' + codes.length + '</div><div>QR Codes</div></div><div class="stat-card"><div class="stat-value">' + totalScans + '</div><div>Total Scans</div></div></div>';
+                var html = '<table class="data-table">一期<th>ID</th><th>Type</th><th>Destination</th><th>Scans</th></tr>';
+                for (var i = 0; i < codes.length; i++) {
+                    var c = codes[i];
+                    var type = (c.page_type === 'product') ? 'Product' : 'Redirect';
+                    var dest = (c.page_type === 'product') ? (c.product_name || '-') : (c.destination_url || '-');
+                    html += '<tr><td><strong>' + c.id + '</strong></td><td>' + type + '</td><td>' + dest + '</td><td>' + (c.scan_count || 0) + '</td></tr>';
+                }
+                html += '</table>';
+                document.getElementById('recent-scans').innerHTML = html;
+            })
+            .catch(function(error) { console.error('Analytics error:', error); });
+        }
+        
+        function refreshAllData() {
+            loadDashboard();
+            loadQRCodes();
+            loadProducts();
+            loadPageSelect();
+            loadAnalytics();
+            loadLandingPages();
+            showAlert('All data refreshed!', 'success');
+        }
+        
+        // Color picker sync
+        var darkPicker = document.getElementById('qr-dark');
+        var darkHex = document.getElementById('qr-dark-hex');
+        var lightPicker = document.getElementById('qr-light');
+        var lightHex = document.getElementById('qr-light-hex');
+        if (darkPicker) darkPicker.addEventListener('input', function(e) { darkHex.value = e.target.value; });
+        if (lightPicker) lightPicker.addEventListener('input', function(e) { lightHex.value = e.target.value; });
+        
+        // Initialize
+        loadDashboard();
+        loadQRCodes();
+        loadLandingPages();
+        loadPageSelect();
+        updateCartDisplay();
+    </script>
+</body>
+</html>
