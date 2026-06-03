@@ -1,0 +1,305 @@
+/* =========================
+FLOATING BEANS
+========================= */
+
+.bean{
+
+    position:absolute;
+
+    width:90px;
+
+    opacity:0.12;
+
+    z-index:1;
+
+    animation:float 8s infinite ease-in-out;
+
+}
+
+.bean-1{
+
+    top:15%;
+    left:5%;
+
+}
+
+.bean-2{
+
+    top:65%;
+    right:8%;
+
+    animation-delay:2s;
+
+}
+
+.bean-3{
+
+    bottom:10%;
+    left:20%;
+
+    animation-delay:4s;
+
+}
+
+.bean-4{
+
+    top:25%;
+    right:25%;
+
+    animation-delay:1s;
+
+}
+
+@keyframes float{
+
+    0%{
+        transform:translateY(0px) rotate(0deg);
+    }
+
+    50%{
+        transform:translateY(-35px) rotate(8deg);
+    }
+
+    100%{
+        transform:translateY(0px) rotate(0deg);
+    }
+
+}
+
+/* =========================
+PRODUCT SECTION
+========================= */
+
+.products{
+
+    padding:140px 8%;
+
+    background:#080808;
+
+    position:relative;
+
+}
+
+.section-header{
+
+    text-align:center;
+
+    margin-bottom:90px;
+
+}
+
+.section-header span{
+
+    color:#D4AF37;
+
+    letter-spacing:5px;
+
+    font-size:13px;
+
+}
+
+.section-header h2{
+
+    font-size:64px;
+
+    margin-top:20px;
+
+    color:#F6D365;
+
+    font-family:'Cinzel',serif;
+
+}
+
+/* =========================
+GRID
+========================= */
+
+.product-grid{
+
+    display:grid;
+
+    grid-template-columns:
+    repeat(auto-fit,minmax(320px,1fr));
+
+    gap:40px;
+
+}
+
+/* =========================
+CARDS
+========================= */
+
+.product-card{
+
+    background:#101010;
+
+    border-radius:32px;
+
+    overflow:hidden;
+
+    border:
+    1px solid rgba(212,175,55,0.08);
+
+    transition:0.5s;
+
+    position:relative;
+
+    cursor:pointer;
+
+}
+
+.product-card::before{
+
+    content:'';
+
+    position:absolute;
+
+    inset:0;
+
+    background:
+    linear-gradient(
+    135deg,
+    transparent,
+    rgba(212,175,55,0.08),
+    transparent);
+
+    transform:translateX(-120%);
+
+    transition:1.2s;
+
+}
+
+.product-card:hover::before{
+
+    transform:translateX(120%);
+
+}
+
+.product-card:hover{
+
+    transform:
+    translateY(-18px)
+    scale(1.02);
+
+    box-shadow:
+    0 35px 70px rgba(212,175,55,0.12);
+
+}
+
+.product-card img{
+
+    width:100%;
+
+    height:430px;
+
+    object-fit:cover;
+
+    transition:0.6s;
+
+}
+
+.product-card:hover img{
+
+    transform:scale(1.06);
+
+}
+
+.card-content{
+
+    padding:35px;
+
+}
+
+.card-content h3{
+
+    font-size:32px;
+
+    color:#F6D365;
+
+    margin-bottom:18px;
+
+    font-family:'Cinzel',serif;
+
+}
+
+.card-content p{
+
+    color:#aaa;
+
+    line-height:1.9;
+
+    margin-bottom:30px;
+
+}
+
+.card-content a{
+
+    color:#D4AF37;
+
+    text-decoration:none;
+
+    border-bottom:1px solid #D4AF37;
+
+    padding-bottom:6px;
+
+    transition:0.3s;
+
+}
+
+.card-content a:hover{
+
+    color:white;
+
+    border-color:white;
+
+}
+
+/* =========================
+GOLD GLOW
+========================= */
+
+.products::before{
+
+    content:'';
+
+    position:absolute;
+
+    width:700px;
+    height:700px;
+
+    background:
+    radial-gradient(
+    circle,
+    rgba(212,175,55,0.08),
+    transparent 70%);
+
+    top:-300px;
+    right:-200px;
+
+    pointer-events:none;
+
+}
+
+/* =========================
+CUSTOM SCROLLBAR
+========================= */
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:#050505;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:#D4AF37;
+
+    border-radius:20px;
+
+}
