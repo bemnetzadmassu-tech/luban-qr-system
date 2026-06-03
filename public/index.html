@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Luban Coffee - Ethiopian Premium Coffee</title>
 	 
-      <!-- CSS paths - relative to public folder -->
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/animations.css">
+      <!-- Use absolute paths from root -->
+    <link rel="stylesheet" href="/css/styles.css">
+    
+    <!-- Or use relative paths that work both locally and on Vercel -->
+    <link rel="stylesheet" href="./css/styles.css">
 </head>
 <body>
 	
@@ -155,6 +157,9 @@ next to Bilala Mosque Kalen Building 2nd floor </span>
        
     </div>
     
-    <script src="js/script.js"></script>
+    <!-- JavaScript at the bottom -->
+    <script src="/js/script.js"></script>
+    <!-- or -->
+    <script src="./js/script.js"></script>
 </body>
 </html>

@@ -688,15 +688,76 @@ app.get('/api/admin/backup', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-// ============================================
-// SERVE STATIC FILES
-// ============================================
-app.use(express.static('public'));
+ 
 
-app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, '../public/index.html'));
+// ============================================
+// SERVE STATIC FILES - PROFESSIONAL FIX
+// ============================================
+
+// Method 1: Serve entire public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Method 2: Explicit routes for common static files
+app.get(['/styles.css', '/style.css', '/main.css'], (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/css/styles.css'));
+});
+
+app.get(['/script.js', '/main.js', '/app.js'], (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/js/script.js'));
+});
+
+// Method 3: Serve any static file from public folder
+app.use('/static', express.static(path.join(__dirname, '../public')));
+
+// Debug endpoint to check what files are available (remove in production)
+app.get('/api/debug/static', (req, res) => {
+    const fs = require('fs');
+    const publicPath = path.join(__dirname, '../public');
+    
+    const listFiles = (dir) => {
+        let results = [];
+        const list = fs.readdirSync(dir);
+        list.forEach(file => {
+            const filePath = path.join(dir, file);
+            const stat = fs.statSync(filePath);
+            if (stat && stat.isDirectory()) {
+                results = results.concat(listFiles(filePath));
+            } else {
+                results.push(filePath.replace(publicPath, ''));
+            }
+        });
+        return results;
+    };
+    
+    try {
+        const files = listFiles(publicPath);
+        res.json({ 
+            success: true, 
+            publicPath, 
+            files,
+            cwd: process.cwd(),
+            dirname: __dirname
+        });
+    } catch (err) {
+        res.json({ success: false, error: err.message });
     }
+});
+
+// ============================================
+// YOUR EXISTING API ROUTES GO HERE
+// ============================================
+// ... (keep all your existing routes)
+
+// ============================================
+// CATCH-ALL - Serve index.html for non-API routes
+// ============================================
+app.get('*', (req, res) => {
+    // Don't interfere with API routes
+    if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    // Serve index.html for all other routes
+    res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // Error handler
